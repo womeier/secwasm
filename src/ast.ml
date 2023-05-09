@@ -49,6 +49,21 @@ let example_module: wasm_module = {
   ]
 }
 
+let print_instruction (i : wasm_instruction) =
+  match i with 
+  | WI_nop -> "nop"
+  | _ -> "TBD"
+
+let print_function (f : wasm_func) =
+  let print_locals (locals : i_nn_type list) = List.map (fun _ -> "i32")  locals
+  and print_body (body: wasm_instruction list) = ""
+in match f with
+    | { ftype; locals; body } -> 
+      "(func \n"
+      ^ "(param " ^ (String.concat "" (print_locals locals))
+      ^ "( " ^ (print_body body)
+
+
 
 let print_module (m : wasm_module) = 
   "(module)"
