@@ -1,0 +1,5 @@
+(executable
+ (name ast))
+(env
+ (dev
+   (flags (:standard -warn-error -A))))
