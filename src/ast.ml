@@ -1,3 +1,6 @@
+open Sec
+open Util
+
 type i_nn_type = 
   | I32
   (* | I64 *)
@@ -67,9 +70,66 @@ in match f with
 
 let print_module (m : wasm_module) = 
   "(module)"
+
+let check_stack s1 s2 =
+  assert (List.length s1 = List.length s2 && List.for_all2 (fun t1 -> fun t2 -> t1 == t2) s1 s2)
+
+let pop (s1 : i_nn_type list) (s2 : i_nn_type list) =
+  let l1 = List.length s1 in
+  let l2 = List.length s2 in
+  let l = min l1 l2 in 
+  check_stack s1 (ListUtil.drop (l2 - l) s2);
+  ListUtil.take (l2 - l) s2
+
+let rec check_instr (i : wasm_instruction) (_ : i_nn_type list) : (i_nn_type list) * (i_nn_type list) =
+  match i with 
+  | WI_unreachable -> ([], [])
+  | WI_nop -> ([], [])
+  | WI_const (I32, _) -> ([], [I32])
+  | WI_add I32-> ([I32; I32], [I32])
+  | _ -> ([], [])
   
 
+(* TODO: A non-lazy version of split-last *)
+let rec check_seq (seq : wasm_instruction list) : i_nn_type list =
+  match seq with
+  | [] ->
+    []
+  | _ -> 
+    match List.rev seq with 
+    | [] -> 
+      []
+    | h :: seq' ->
+      let stack = check_seq (List.rev seq') in
+      let (ins, outs) = check_instr h stack in 
+      (pop ins stack) @ outs
+
+
+
+let type_check_function (f : wasm_func) = 
+  let _ = check_seq f.body 
+  in true
+  
+  
+
+let type_check_module (m : wasm_module) = 
+  List.for_all type_check_function m.functions
+
+let example_module' = {
+    globals = [];
+    functions = [
+      {
+        ftype = FunType ([], []);
+        locals = [];
+        body = [WI_const (I32, 1); WI_const (I32, 1); WI_add I32; WI_const (I32, 40); WI_add I32]
+      }
+    ]
+  }
+
 let () =
-  let oc = open_out "out.wat" in
+  ignore (type_check_module example_module')
+
+  (* let oc = open_out "out.wat" in
+    ignore (type_check_module example_module);
     Printf.fprintf oc "%s\n" (print_module example_module);
-    close_out oc;
+    close_out oc; *)
