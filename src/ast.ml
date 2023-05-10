@@ -179,8 +179,20 @@ let pp_module (m : wasm_module) =
   ^ (List.fold_left (fun _s f -> _s ^ nl ^ (pp_function f)) "" m.functions)
   ^ nl ^ ")"
 
+let example_module' = {
+  globals = [];
+  functions = [
+    {
+      ftype = FunType ([], []);
+      locals = [I32];
+      body = [WI_const (I32, 1); WI_const (I32, 1); WI_add I32];
+      export_name = Some "$foo"
+    }
+  ];
+}
+
 let () =
-  ignore (type_check_module example_module)
+  ignore (type_check_module example_module')
 
   (* let oc = open_out "out.wat" in
     ignore (type_check_module example_module);
