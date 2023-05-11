@@ -1,0 +1,4 @@
+(executable
+ (public_name secwasm)
+ (name main)
+ (libraries secwasm))
