@@ -10,3 +10,6 @@ run:
 clean:
 	dune clean
 	rm -f *.wat *.wasm
+
+test:
+	dune runtest -f
