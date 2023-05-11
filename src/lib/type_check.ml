@@ -9,6 +9,7 @@ open Sec
 
 exception NotImplemented of string
 exception TypingError of string
+exception PrivacyViolation of string
 
 type context = {
   funcs : fun_type list;
@@ -67,13 +68,24 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
       ([], [ { t = ty; lbl } ])
   | WI_GlobalSet idx -> (
       match stack with
-      | ({ t = ty1; lbl = l } as h) :: _ ->
-          let { gtype = { t = ty2; lbl = l' }; const = _ } =
+      | ({ t = src; lbl = l } as h) :: _ ->
+          let { gtype = { t = dst; lbl = l' }; const = _ } =
             lookup_global c idx
           in
           (* Check that types are equal and pc ⊔ l ⊑ l' *)
-          if not (ty1 == ty2 && SimpleLattice.leq (SimpleLattice.lub l pc) l')
-          then failwith "Failed to set global";
+          if not (src == dst) then
+            raise
+              (TypingError
+                 (Printf.sprintf
+                    "global.set: src/ dst mismatch (src=%s, dst=%s)" (str src)
+                    (str dst)))
+          else if not (SimpleLattice.leq (SimpleLattice.lub l pc) l') then
+            raise
+              (PrivacyViolation
+                 (Printf.sprintf
+                    "expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
+                    (SimpleLattice.str l) (SimpleLattice.str pc)
+                    (SimpleLattice.str l')));
           ([ h ], [])
       | _ -> raise (TypingError "SetGlobal expected 1 value on the stack"))
   | WI_Load -> raise (NotImplemented "load")
