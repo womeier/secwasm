@@ -7,12 +7,14 @@ let next_id =
     incr counter;
     Printf.sprintf "%d" !counter
 
-let print_test_result name result =
+let print_test_result name id result =
   let s = if result then "SUCCESS" else "FAIL" in
-  print_endline ("Test" ^ next_id () ^ " [" ^ name ^ "]\t\t: " ^ s)
+  print_endline ("Test " ^ id ^ " [" ^ name ^ "]\t\t: " ^ s)
 
 let test_check_module (name : string) (m : wasm_module) =
-  print_test_result name (type_check_module m)
+  let id = next_id () in
+  print_endline ("Running test " ^ id ^ " [" ^ name ^ "] ...");
+  print_test_result name id (type_check_module m)
 
 (*
   (module 
@@ -61,6 +63,27 @@ let module_local_set =
       ];
   }
 
+(*
+  (module
+    (func
+      nop
+    )
+  )
+*)
+let module_nop =
+  {
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], []);
+          locals = [ I32 ];
+          body = [ WI_Nop ];
+          export_name = None;
+        };
+      ];
+  }
+
 let _ = test_check_module "add consts" module_add_consts
-let _ = test_check_module "noop" module_local_set
+let _ = test_check_module "nop" module_nop
 let _ = test_check_module "local.set" module_local_set
