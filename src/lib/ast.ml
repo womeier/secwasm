@@ -12,9 +12,9 @@ type global_type = GlobalType of value_type
 type binop = Add | Eq 
 
 type wasm_instruction = 
-  | WI_Unreachable                              (* trap unconditionally *)
-  | WI_Nop                                      (* do nothing *)
-  | WI_Drop                                     (* drop value *)
+  | WI_Unreachable                                (* trap unconditionally *)
+  | WI_Nop                                        (* do nothing *)
+  | WI_Drop                                       (* drop value *)
 
   | WI_Const of int32                             (* constant *)
   | WI_BinOp of binop                             (* binary numeric operator *)
@@ -68,7 +68,7 @@ let example_module: wasm_module = {
           [WI_Nop; WI_Const 2l; WI_LocalSet 0l],
           [WI_Const 42l; WI_LocalSet 0l])
       ];
-      export_name = Some "$hello"
+      export_name = Some "hello"
     }
   ]
 }
@@ -81,11 +81,6 @@ let pp_type (t : value_type) =
   | I32 -> "i32"
 
 let nl = "\n"
-
-let pp_binop (bop : binop) =
-  match bop with 
-  | Add -> "i32.add"
-  | Eq -> "i32.eq"
 
 let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   let pp_instructions (indent' : int) (instructions : wasm_instruction list) =
@@ -101,7 +96,8 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_Unreachable        -> "unreachable"
   | WI_Nop                -> "nop"
   | WI_Const v            -> "i32.const " ^ Int32.to_string v
-  | WI_BinOp op           -> pp_binop op
+  | WI_BinOp Add          -> "i32.add"
+  | WI_BinOp Eq           -> "i32.eq"
   | WI_Call idx           -> "call " ^ (Int32.to_string idx)
   | WI_Drop               -> "drop"
 
