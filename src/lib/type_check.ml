@@ -7,6 +7,8 @@
 open Ast
 open Sec
 
+exception NotImplemented of string
+
 type context = {
   funcs : fun_type list;
   globals : wasm_global list;
@@ -43,6 +45,9 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
     (stack : labeled_value_type list) :
     labeled_value_type list * labeled_value_type list =
   match i with
+  | WI_Unreachable -> raise (NotImplemented "unreachable")
+  | WI_Nop -> raise (NotImplemented "nop")
+  | WI_Drop -> raise (NotImplemented "drop")
   | WI_Const _ -> ([], [ { t = I32; lbl = pc } ])
   | WI_BinOp _ -> (
       match stack with
@@ -52,6 +57,9 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           let lbl3 = SimpleLattice.lub (SimpleLattice.lub lbl1 lbl2) pc in
           ([ v1; v2 ], [ { t = t1; lbl = lbl3 } ])
       | _ -> failwith "BinOp expected 2 values on the stack")
+  | WI_Call i -> raise (NotImplemented "call")
+  | WI_LocalGet i -> raise (NotImplemented "local.get")
+  | WI_LocalSet i -> raise (NotImplemented "local.set")
   | WI_GlobalGet idx ->
       let { gtype = { t = ty; lbl = lbl' }; const = _ } = lookup_global c idx in
       let lbl = SimpleLattice.lub pc lbl' in
@@ -67,7 +75,9 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           then failwith "Failed to set global";
           ([ h ], [])
       | _ -> failwith "SetGlobal expected 1 value on the stack")
-  | _ -> failwith "not implemented"
+  | WI_Load -> raise (NotImplemented "load")
+  | WI_Store -> raise (NotImplemented "load")
+  | WI_If _ -> raise (NotImplemented "if-then-else")
 
 let rec check_seq (c : context) (pc : pc_type) (seq : wasm_instruction list) :
     labeled_value_type list =
