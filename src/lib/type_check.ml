@@ -16,27 +16,25 @@ type 'a stack_of_stacks_type = (('a stack_type) * ('a pc_type))
 let check_stack s1 s2 =
   assert (List.length s1 = List.length s2 && List.for_all2 (fun t1 -> fun t2 -> t1 == t2) s1 s2)
 
-let pop (s1 : value_type list) (s2 : value_type list) =
+let pop (s1 : 'a labeled_value_type list) (s2 : 'a labeled_value_type list) =
   let l1 = List.length s1 in
   let l2 = List.length s2 in
   let l = min l1 l2 in 
   check_stack s1 (Util.List.drop (l2 - l) s2);
   Util.List.take (l2 - l) s2
 
-let rec check_instr (i : wasm_instruction) (_ : value_type list) : (value_type list) * (value_type list) =
+let rec check_instr (i : wasm_instruction) (_ : 'a labeled_value_type list) : ('a labeled_value_type list) * ('a labeled_value_type list) =
   match i with 
   | WI_Const v -> 
-    let t = type_of_value v in
-      ([], [t])
+      failwith "not implemented"
 
   | WI_BinOp bop -> 
-      let t = type_of_binop bop in 
-      ([t; t], [t])
+      failwith "not implemented"
 
-  | _ -> ([], [])
+  | _ -> failwith "not implemented"
   
 
-let rec check_seq (seq : wasm_instruction list) : value_type list =
+let rec check_seq (seq : wasm_instruction list) : 'a labeled_value_type list =
   match seq with
   | [] ->
     []
