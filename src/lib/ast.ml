@@ -1,13 +1,13 @@
+open Sec
 
 type value_type = I32
 
 (* This is equivalent to tau in the paper (typing judgements) *)
-type 'a labeled_value_type = 
-  {t: value_type; lbl: 'a}
+type labeled_value_type = 
+  {t: value_type; lbl: SimpleLattice.t}
 
 type stack_type = value_type list
 type fun_type = FunType of stack_type * stack_type
-type global_type = GlobalType of value_type
 
 type binop = Add | Eq 
 
@@ -33,7 +33,7 @@ type wasm_instruction =
   
 
 type wasm_global = {
-  gtype : value_type;
+  gtype : labeled_value_type;
   const : wasm_instruction list;
 }
 
@@ -69,6 +69,21 @@ let example_module: wasm_module = {
           [WI_Const 42l; WI_LocalSet 0l])
       ];
       export_name = Some "hello"
+    }
+  ]
+}
+
+let example_module' = {
+  globals = [
+    {gtype = {t = I32; lbl = Secret}; const = [WI_Const 40l]};
+    {gtype = {t = I32; lbl = Public}; const = [WI_Const 0l]}
+    ];
+  functions = [
+    {
+      ftype = FunType ([], []);
+      locals = [];
+      body = [WI_Const 1l; WI_Const 1l; WI_BinOp Add; WI_GlobalGet 0l; WI_BinOp Add; WI_GlobalSet 1l];
+      export_name = None
     }
   ]
 }

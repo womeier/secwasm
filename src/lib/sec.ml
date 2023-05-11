@@ -18,3 +18,10 @@ module SimpleLattice : LATTICE with type t = simpleLatticeElement = struct
     | Public, e2 -> e2 
     | _ -> Secret
 end
+
+(* 
+let lub : ('a lattice) -> ('a lattice) = 
+  fun (type a) (lub : a lattice) (e1 : a) (e2 : a) -> 
+    let module Lub =
+      (val lub : LATTICE with type = a) in 
+      Lub.lub e1 e2 *)
