@@ -1,4 +1,8 @@
 (test
  (libraries secwasm)
  (name test_secwasm))
-(env (dev (flags (:standard -warn-error -A))))
+
+(env
+ (dev
+  (flags
+   (:standard -warn-error -A))))
