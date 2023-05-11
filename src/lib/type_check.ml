@@ -8,6 +8,7 @@ open Ast
 open Sec
 
 exception NotImplemented of string
+exception TypingError of string
 
 type context = {
   funcs : fun_type list;
@@ -56,7 +57,7 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           (* Label should be lbl1 ⊔ lbl2 ⊔ pc *)
           let lbl3 = SimpleLattice.lub (SimpleLattice.lub lbl1 lbl2) pc in
           ([ v1; v2 ], [ { t = t1; lbl = lbl3 } ])
-      | _ -> failwith "BinOp expected 2 values on the stack")
+      | _ -> raise (TypingError "BinOp expected 2 values on the stack"))
   | WI_Call i -> raise (NotImplemented "call")
   | WI_LocalGet i -> raise (NotImplemented "local.get")
   | WI_LocalSet i -> raise (NotImplemented "local.set")
@@ -74,7 +75,7 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           if not (ty1 == ty2 && SimpleLattice.leq (SimpleLattice.lub l pc) l')
           then failwith "Failed to set global";
           ([ h ], [])
-      | _ -> failwith "SetGlobal expected 1 value on the stack")
+      | _ -> raise (TypingError "SetGlobal expected 1 value on the stack"))
   | WI_Load -> raise (NotImplemented "load")
   | WI_Store -> raise (NotImplemented "load")
   | WI_If _ -> raise (NotImplemented "if-then-else")
