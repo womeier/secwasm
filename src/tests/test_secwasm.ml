@@ -23,8 +23,8 @@ let test_check_module (name : string) (m : wasm_module) =
     print_endline (Printexc.to_string exn)
 
 (*
-  (module 
-    (func 
+  (module
+    (func
       (result i32)
       i32.const 1
       i32.const 1
