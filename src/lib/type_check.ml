@@ -58,9 +58,9 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           let lbl3 = SimpleLattice.lub (SimpleLattice.lub lbl1 lbl2) pc in
           ([ v1; v2 ], [ { t = t1; lbl = lbl3 } ])
       | _ -> raise (TypingError "BinOp expected 2 values on the stack"))
-  | WI_Call i -> raise (NotImplemented "call")
-  | WI_LocalGet i -> raise (NotImplemented "local.get")
-  | WI_LocalSet i -> raise (NotImplemented "local.set")
+  | WI_Call _ -> raise (NotImplemented "call")
+  | WI_LocalGet _ -> raise (NotImplemented "local.get")
+  | WI_LocalSet _ -> raise (NotImplemented "local.set")
   | WI_GlobalGet idx ->
       let { gtype = { t = ty; lbl = lbl' }; const = _ } = lookup_global c idx in
       let lbl = SimpleLattice.lub pc lbl' in
