@@ -33,5 +33,5 @@ _opam/
 *.wasm
 *.wat
 
-.DS_Store/
+.DS_Store
 .vscode/
