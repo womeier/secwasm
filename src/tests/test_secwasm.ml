@@ -7,14 +7,20 @@ let next_id =
     incr counter;
     Printf.sprintf "%d" !counter
 
-let print_test_result name id result =
+let print_test_result result =
   let s = if result then "SUCCESS" else "FAIL" in
-  print_endline ("Test " ^ id ^ " [" ^ name ^ "]\t\t: " ^ s)
+  print_endline s
 
 let test_check_module (name : string) (m : wasm_module) =
   let id = next_id () in
-  print_endline ("Running test " ^ id ^ " [" ^ name ^ "] ...");
-  print_test_result name id (type_check_module m)
+  let s = "Running test " ^ id ^ " [" ^ name ^ "] ... " in
+  let padding = String.make (max 0 (50 - String.length s)) ' ' in
+  print_string (s ^ padding);
+  try print_test_result (type_check_module m)
+  with exn ->
+    print_endline "FAIL!";
+    Printexc.print_backtrace stdout;
+    print_endline (Printexc.to_string exn)
 
 (*
   (module 
