@@ -37,7 +37,7 @@ type wasm_func = {
   ftype : fun_type;
   locals : i_nn_type list;
   body : wasm_instruction list;
-  export_name : string option;                  (* export name, should start with '$' *)
+  export_name : string option;
 }
 
 type wasm_module = {
@@ -55,7 +55,7 @@ let example_module: wasm_module = {
       locals = [I32];
       body = [WI_nop; WI_local_get 0; WI_local_get 1; WI_add I32; WI_const (I32, 0); WI_eq I32; WI_if ([WI_nop; WI_const (I32, 2); WI_local_set 0],
       [WI_const (I32, 42); WI_local_set 0])];
-      export_name = Some "$hello"
+      export_name = Some "hello"
     }
   ]
 }
@@ -186,7 +186,7 @@ let example_module' = {
       ftype = FunType ([], []);
       locals = [I32];
       body = [WI_const (I32, 1); WI_const (I32, 1); WI_add I32];
-      export_name = Some "$foo"
+      export_name = Some "foo"
     }
   ];
 }
