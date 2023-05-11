@@ -24,7 +24,7 @@ let test_check_module (name : string) (m : wasm_module) =
     )
   )
 *)
-let module1_add_consts =
+let module_add_consts =
   {
     globals = [];
     functions =
@@ -47,7 +47,7 @@ let module1_add_consts =
     )
   )
 *)
-let module2_local_set =
+let module_local_set =
   {
     globals = [];
     functions =
@@ -61,5 +61,6 @@ let module2_local_set =
       ];
   }
 
-let _ = test_check_module "add consts" module1_add_consts
-let _ = test_check_module "local.set" module2_local_set
+let _ = test_check_module "add consts" module_add_consts
+let _ = test_check_module "noop" module_local_set
+let _ = test_check_module "local.set" module_local_set
