@@ -10,20 +10,24 @@ type stack_type = value_type list
 type fun_type = FunType of stack_type * stack_type
 type binop = Add | Eq
 
+[@@@ocamlformat "disable"]
+
 type wasm_instruction =
-  | WI_Unreachable (* trap unconditionally *)
-  | WI_Nop (* do nothing *)
-  | WI_Drop (* drop value *)
-  | WI_Const of int32 (* constant *)
-  | WI_BinOp of binop (* binary numeric operator *)
-  | WI_Call of int32 (* call function *)
-  | WI_LocalGet of int32 (* read local variable *)
-  | WI_LocalSet of int32 (* write local variable *)
-  | WI_GlobalGet of int32 (* read global variable *)
-  | WI_GlobalSet of int32 (* write global variable *)
-  | WI_Load (* read memory at address *)
-  | WI_Store (* write memory at address *)
+  | WI_Unreachable                                            (* trap unconditionally *)
+  | WI_Nop                                                    (* do nothing *)
+  | WI_Drop                                                   (* drop value *)
+  | WI_Const of int32                                         (* constant *)
+  | WI_BinOp of binop                                         (* binary numeric operator *)
+  | WI_Call of int32                                          (* call function *)
+  | WI_LocalGet of int32                                      (* read local variable *)
+  | WI_LocalSet of int32                                      (* write local variable *)
+  | WI_GlobalGet of int32                                     (* read global variable *)
+  | WI_GlobalSet of int32                                     (* write global variable *)
+  | WI_Load                                                   (* read memory at address *)
+  | WI_Store                                                  (* write memory at address *)
   | WI_If of wasm_instruction list * wasm_instruction list
+
+[@@@ocamlformat "enable"]
 
 type wasm_global = { gtype : labeled_value_type; const : wasm_instruction list }
 
