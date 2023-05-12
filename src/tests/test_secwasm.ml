@@ -161,9 +161,31 @@ let module_drop =
       ];
   }
 
+(*
+  (module
+    (func
+      drop
+    )
+  )
+*)
+let module_drop2 =
+  {
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], []);
+          locals = [ I32 ];
+          body = [ WI_Drop ];
+          export_name = None;
+        };
+      ];
+  }
+
 let _ = test_check_module true "add consts" module_add_consts
 let _ = test_check_module false "add consts 2" module_add_consts2
 let _ = test_check_module true "nop" module_nop
 let _ = test_check_module true "unreachable" module_uncreachable
 let _ = test_check_module true "drop" module_drop
+let _ = test_check_module false "drop 2" module_drop2
 let _ = test_check_module true "local.set" module_local_set
