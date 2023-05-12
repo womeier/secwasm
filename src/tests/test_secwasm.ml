@@ -24,8 +24,10 @@ let test_check_module (expect : bool) (name : string) (m : wasm_module) =
     print_test_result expect true (* m type checks *)
   with exn ->
     print_test_result expect false;
-    Printexc.print_backtrace stdout;
-    print_endline (Printexc.to_string exn)
+    if expect then (
+      (* only print exceptions on positive tests *)
+      Printexc.print_backtrace stdout;
+      print_endline (Printexc.to_string exn))
 
 (*
   (module
