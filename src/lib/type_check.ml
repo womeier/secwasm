@@ -122,7 +122,9 @@ let rec check_seq (c : context) (pc : pc_type) (seq : wasm_instruction list) :
       pop ins stack @ outs
 
 let type_check_function (c : context) (f : wasm_func) =
-  let _ = check_seq c Public f.body in
+  let map_locals = function (l : value_type) -> { t = l; lbl = Public } in
+  let c' = { c with locals = List.map map_locals f.locals } in
+  let _ = check_seq c' Public f.body in
   ()
 
 let type_check_module (m : wasm_module) =
