@@ -23,9 +23,24 @@ type pc_type = SimpleLattice.t
 type stack_type = labeled_value_type list
 type stack_of_stacks_type = (stack_type * pc_type) list
 
-(* ======= Notation ========*)
+(* ======= Notation ======== *)
 let ( <> ) v1 v2 = SimpleLattice.lub v1 v2
 let ( <= ) v1 v2 = SimpleLattice.leq v1 v2
+
+(* ======= Error handling == *)
+
+let t_err0 msg = raise (TypingError msg)
+
+let t_err2 msg (t1 : value_type) (t2 : value_type) =
+  let error_msg = Printf.sprintf msg (str t1) (str t2) in
+  raise (TypingError error_msg)
+
+let p_err3 msg l1 l2 l3 =
+  let error_msg =
+    Printf.sprintf msg (SimpleLattice.str l1) (SimpleLattice.str l2)
+      (SimpleLattice.str l3)
+  in
+  raise (PrivacyViolation error_msg)
 
 let lookup_global (c : context) (idx : int32) =
   List.nth c.globals (Int32.to_int idx)
@@ -59,7 +74,7 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
   | WI_Drop -> (
       match stack with
       | v :: _ -> ([ v ], [])
-      | _ -> raise (TypingError "drop expected 1 value on the stack"))
+      | _ -> t_err0 "drop expected 1 value on the stack")
   | WI_Const _ -> ([], [ { t = I32; lbl = pc } ])
   | WI_BinOp _ -> (
       match stack with
@@ -68,8 +83,8 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           (* Label should be lbl1 ⊔ lbl2 ⊔ pc *)
           let lbl3 = lbl1 <> lbl2 <> pc in
           ([ v1; v2 ], [ { t = t1; lbl = lbl3 } ])
-      | _ -> raise (TypingError "BinOp expected 2 values on the stack"))
-  | WI_Call _ -> raise (NotImplemented "call")
+      | _ -> t_err0 "BinOp expected 2 values on the stack")
+  | WI_Call _ -> raise (NotImplemented "local.get")
   | WI_LocalGet _ -> raise (NotImplemented "local.get")
   | WI_LocalSet _ -> raise (NotImplemented "local.set")
   | WI_GlobalGet idx ->
@@ -84,20 +99,12 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           in
           (* Check that types are equal and pc ⊔ l ⊑ l' *)
           if not (src == dst) then
-            raise
-              (TypingError
-                 (Printf.sprintf
-                    "global.set: src/ dst mismatch (src=%s, dst=%s)" (str src)
-                    (str dst)))
+            t_err2 "global.set: src/ dst mismatch (src=%s, dst=%s)" src dst
           else if not (l <> pc <= l') then
-            raise
-              (PrivacyViolation
-                 (Printf.sprintf
-                    "expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
-                    (SimpleLattice.str l) (SimpleLattice.str pc)
-                    (SimpleLattice.str l')));
+            p_err3 "global.set: expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
+              pc l l';
           ([ h ], [])
-      | _ -> raise (TypingError "SetGlobal expected 1 value on the stack"))
+      | _ -> t_err0 "SetGlobal expected 1 value on the stack")
   | WI_Load -> raise (NotImplemented "load")
   | WI_Store -> raise (NotImplemented "load")
   | WI_If _ -> raise (NotImplemented "if-then-else")
