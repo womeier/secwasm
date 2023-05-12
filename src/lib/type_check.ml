@@ -21,7 +21,11 @@ type context = {
 
 type pc_type = SimpleLattice.t
 type stack_type = labeled_value_type list
-type stack_of_stacks_type = stack_type * pc_type
+type stack_of_stacks_type = (stack_type * pc_type) list
+
+(* ======= Notation ========*)
+let ( <> ) v1 v2 = SimpleLattice.lub v1 v2
+let ( <= ) v1 v2 = SimpleLattice.leq v1 v2
 
 let lookup_global (c : context) (idx : int32) =
   List.nth c.globals (Int32.to_int idx)
@@ -47,7 +51,10 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
     (stack : labeled_value_type list) :
     labeled_value_type list * labeled_value_type list =
   match i with
-  | WI_Unreachable -> ([], [])
+  | WI_Unreachable ->
+      (* Note: We put no restrictions on the program context,
+         i.e. our approach is termination sensitive! *)
+      ([], [])
   | WI_Nop -> ([], [])
   | WI_Drop -> (
       match stack with
@@ -59,7 +66,7 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
       | ({ t = t1; lbl = lbl1 } as v1) :: ({ t = t2; lbl = lbl2 } as v2) :: _ ->
           assert (t1 == t2);
           (* Label should be lbl1 ⊔ lbl2 ⊔ pc *)
-          let lbl3 = SimpleLattice.lub (SimpleLattice.lub lbl1 lbl2) pc in
+          let lbl3 = lbl1 <> lbl2 <> pc in
           ([ v1; v2 ], [ { t = t1; lbl = lbl3 } ])
       | _ -> raise (TypingError "BinOp expected 2 values on the stack"))
   | WI_Call _ -> raise (NotImplemented "call")
@@ -67,7 +74,7 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
   | WI_LocalSet _ -> raise (NotImplemented "local.set")
   | WI_GlobalGet idx ->
       let { gtype = { t = ty; lbl = lbl' }; const = _ } = lookup_global c idx in
-      let lbl = SimpleLattice.lub pc lbl' in
+      let lbl = pc <> lbl' in
       ([], [ { t = ty; lbl } ])
   | WI_GlobalSet idx -> (
       match stack with
@@ -82,7 +89,7 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
                  (Printf.sprintf
                     "global.set: src/ dst mismatch (src=%s, dst=%s)" (str src)
                     (str dst)))
-          else if not (SimpleLattice.leq (SimpleLattice.lub l pc) l') then
+          else if not (l <> pc <= l') then
             raise
               (PrivacyViolation
                  (Printf.sprintf
