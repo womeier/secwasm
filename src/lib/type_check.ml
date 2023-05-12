@@ -85,7 +85,9 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           ([ v1; v2 ], [ { t = t1; lbl = lbl3 } ])
       | _ -> t_err0 "BinOp expected 2 values on the stack")
   | WI_Call _ -> raise (NotImplemented "local.get")
-  | WI_LocalGet _ -> raise (NotImplemented "local.get")
+  | WI_LocalGet i ->
+      let { t; lbl } = List.nth c.locals (Int32.to_int i) in
+      ([], [ { t; lbl = pc <> lbl } ])
   | WI_LocalSet _ -> raise (NotImplemented "local.set")
   | WI_GlobalGet idx ->
       let { gtype = { t = ty; lbl = lbl' }; const = _ } = lookup_global c idx in
