@@ -104,8 +104,9 @@ let rec check_seq (c : context) (pc : pc_type) (seq : wasm_instruction list) :
 
 let type_check_function (c : context) (f : wasm_func) =
   let _ = check_seq c Public f.body in
-  true
+  ()
 
 let type_check_module (m : wasm_module) =
   let c = { empty_context with globals = m.globals } in
-  List.for_all (type_check_function c) m.functions
+  let _ = List.map (type_check_function c) m.functions in
+  ()
