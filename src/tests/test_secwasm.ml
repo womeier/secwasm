@@ -41,7 +41,7 @@ let test_check_module (expect : bool) (name : string) (m : wasm_module) =
     )
   )
 *)
-let module_add_consts =
+let module_add_consts : wasm_module =
   {
     globals = [];
     functions =
@@ -64,7 +64,7 @@ let module_add_consts =
     )
   )
 *)
-let module_add_consts2 =
+let module_add_consts2 : wasm_module =
   {
     globals = [];
     functions =
@@ -85,7 +85,7 @@ let module_add_consts2 =
     )
   )
 *)
-let module_nop =
+let module_nop : wasm_module =
   {
     globals = [];
     functions =
@@ -106,7 +106,7 @@ let module_nop =
     )
   )
 *)
-let module_uncreachable =
+let module_uncreachable : wasm_module =
   {
     globals = [];
     functions =
@@ -128,7 +128,7 @@ let module_uncreachable =
     )
   )
 *)
-let module_drop =
+let module_drop : wasm_module =
   {
     globals = [];
     functions =
@@ -149,7 +149,7 @@ let module_drop =
     )
   )
 *)
-let module_drop2 =
+let module_drop2 : wasm_module =
   {
     globals = [];
     functions =
@@ -171,7 +171,7 @@ let module_drop2 =
     )
   )
 *)
-let module_local_get =
+let module_local_get : wasm_module =
   {
     globals = [];
     functions =
