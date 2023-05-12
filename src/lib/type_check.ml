@@ -23,12 +23,24 @@ type pc_type = SimpleLattice.t
 type stack_type = labeled_value_type list
 type stack_of_stacks_type = (stack_type * pc_type) list
 
-(* ======= Notation ======== *)
+(* ======= Notation ============= *)
 let ( <> ) v1 v2 = SimpleLattice.lub v1 v2
 let ( <= ) v1 v2 = SimpleLattice.leq v1 v2
 
-(* ======= Error handling == *)
+(* ======= Error handling ======= *)
 
+let err_msg_drop = "drop expected 1 value on the stack"
+let err_msg_binop = "BinOp: expected 2 values on the stack"
+let err_msg_localget = "local.get: lookup out of bounds"
+
+let err_msg_globalset1 : (string -> string -> string, unit, string) format =
+  "global.set: src/ dst mismatch (src=%s, dst=%s)"
+
+let err_msg_globalset2 :
+    (string -> string -> string -> string, unit, string) format =
+  "global.set: expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
+
+let err_msg_globalset3 = "SetGlobal expected 1 value on the stack"
 let t_err0 msg = raise (TypingError msg)
 
 let t_err2 msg (t1 : value_type) (t2 : value_type) =
@@ -72,9 +84,7 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
       ([], [])
   | WI_Nop -> ([], [])
   | WI_Drop -> (
-      match stack with
-      | v :: _ -> ([ v ], [])
-      | _ -> t_err0 "drop expected 1 value on the stack")
+      match stack with v :: _ -> ([ v ], []) | _ -> t_err0 err_msg_drop)
   | WI_Const _ -> ([], [ { t = I32; lbl = pc } ])
   | WI_BinOp _ -> (
       match stack with
@@ -83,11 +93,13 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           (* Label should be lbl1 ⊔ lbl2 ⊔ pc *)
           let lbl3 = lbl1 <> lbl2 <> pc in
           ([ v1; v2 ], [ { t = t1; lbl = lbl3 } ])
-      | _ -> t_err0 "BinOp expected 2 values on the stack")
+      | _ -> t_err0 err_msg_binop)
   | WI_Call _ -> raise (NotImplemented "local.get")
-  | WI_LocalGet i ->
-      let { t; lbl } = List.nth c.locals (Int32.to_int i) in
-      ([], [ { t; lbl = pc <> lbl } ])
+  | WI_LocalGet i -> (
+      try
+        let { t; lbl } = List.nth c.locals (Int32.to_int i) in
+        ([], [ { t; lbl = pc <> lbl } ])
+      with _ -> t_err0 err_msg_localget)
   | WI_LocalSet _ -> raise (NotImplemented "local.set")
   | WI_GlobalGet idx ->
       let { gtype = { t = ty; lbl = lbl' }; const = _ } = lookup_global c idx in
@@ -100,13 +112,10 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
             lookup_global c idx
           in
           (* Check that types are equal and pc ⊔ l ⊑ l' *)
-          if not (src == dst) then
-            t_err2 "global.set: src/ dst mismatch (src=%s, dst=%s)" src dst
-          else if not (l <> pc <= l') then
-            p_err3 "global.set: expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
-              pc l l';
+          if not (src == dst) then t_err2 err_msg_globalset1 src dst
+          else if not (l <> pc <= l') then p_err3 err_msg_globalset2 pc l l';
           ([ h ], [])
-      | _ -> t_err0 "SetGlobal expected 1 value on the stack")
+      | _ -> t_err0 err_msg_globalset3)
   | WI_Load -> raise (NotImplemented "load")
   | WI_Store -> raise (NotImplemented "load")
   | WI_If _ -> raise (NotImplemented "if-then-else")

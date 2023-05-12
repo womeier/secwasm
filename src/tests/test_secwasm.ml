@@ -1,37 +1,26 @@
 open Secwasm.Ast
 open Secwasm.Type_check
+open OUnit2
 
-let next_id =
-  let counter = ref 0 in
-  fun () ->
-    incr counter;
-    Printf.sprintf "%d" !counter
+type res = exn option
 
-let print_test_result (expect : bool) (result : bool) =
-  let s =
-    if result = expect then "SUCCESS"
-    else Printf.sprintf "FAIL: Expected typable=%b, was %b" expect result
-  in
-  print_endline s
+let test_check_module (expect : res) (m : wasm_module) (_ : test_ctxt) =
+  let f () = type_check_module m in
+  match expect with
+  | None -> assert_equal () (f ())
+  | Some e -> assert_raises e f
 
-let test_check_module (expect : bool) (name : string) (m : wasm_module) =
-  let id = next_id () in
-  let s = "Running test " ^ id ^ " [" ^ name ^ "] ... " in
-  let padding = String.make (max 0 (50 - String.length s)) ' ' in
-  print_string (s ^ padding);
-  try
-    let _ = type_check_module m in
-    print_test_result expect true (* m type checks *)
-  with exn ->
-    print_test_result expect false;
-    if expect then (
-      (* only print exceptions on positive tests *)
-      Printexc.print_backtrace stdout;
-      print_endline (Printexc.to_string exn))
+let pos_test (m : wasm_module) = test_check_module None m
+let neg_test (m : wasm_module) (e : exn) = test_check_module (Some e) m
 
-(* ======= Type checking tests (positive and negative) ========= *)
+(* ======= Modules under test  ========= *)
+
+let test_list : test list ref = ref []
+let ( ~+ ) t = test_list := !test_list @ [ t ]
 
 (*
+  Add two constants
+
   (module
     (func
       (result i32)
@@ -41,7 +30,7 @@ let test_check_module (expect : bool) (name : string) (m : wasm_module) =
     )
   )
 *)
-let module_add_consts : wasm_module =
+let m_add_consts : wasm_module =
   {
     globals = [];
     functions =
@@ -55,7 +44,11 @@ let module_add_consts : wasm_module =
       ];
   }
 
+let _ = ~+("add consts" >:: pos_test m_add_consts)
+
 (*
+  Add is missing an operand
+
   (module
     (func
       (result i32)
@@ -64,7 +57,7 @@ let module_add_consts : wasm_module =
     )
   )
 *)
-let module_add_consts2 : wasm_module =
+let m_add_consts2 : wasm_module =
   {
     globals = [];
     functions =
@@ -78,14 +71,18 @@ let module_add_consts2 : wasm_module =
       ];
   }
 
+let _ = ~+("add consts 2" >:: neg_test m_add_consts2 (TypingError err_msg_binop))
+
 (*
+  Nop is well-typed
+
   (module
     (func
       nop
     )
   )
 *)
-let module_nop : wasm_module =
+let m_nop : wasm_module =
   {
     globals = [];
     functions =
@@ -99,14 +96,18 @@ let module_nop : wasm_module =
       ];
   }
 
+let _ = ~+("nop" >:: pos_test m_nop)
+
 (*
+  Unreachable is well-typed
+
   (module
     (func
       unreachable
     )
   )
 *)
-let module_uncreachable : wasm_module =
+let m_unreachable : wasm_module =
   {
     globals = [];
     functions =
@@ -120,7 +121,11 @@ let module_uncreachable : wasm_module =
       ];
   }
 
+let _ = ~+("unreachable" >:: pos_test m_unreachable)
+
 (*
+  Push a constant, drop it again
+
   (module
     (func
       i32.const 42
@@ -128,7 +133,7 @@ let module_uncreachable : wasm_module =
     )
   )
 *)
-let module_drop : wasm_module =
+let m_drop : wasm_module =
   {
     globals = [];
     functions =
@@ -142,14 +147,18 @@ let module_drop : wasm_module =
       ];
   }
 
+let _ = ~+("drop" >:: pos_test m_drop)
+
 (*
+  Nothing to drop
+
   (module
     (func
       drop
     )
   )
 *)
-let module_drop2 : wasm_module =
+let m_drop : wasm_module =
   {
     globals = [];
     functions =
@@ -163,7 +172,11 @@ let module_drop2 : wasm_module =
       ];
   }
 
+let _ = ~+("drop 2" >:: neg_test m_drop (TypingError err_msg_drop))
+
 (*
+  Get a public local variable
+
   (module
     (func
       (local i32)
@@ -171,7 +184,7 @@ let module_drop2 : wasm_module =
     )
   )
 *)
-let module_local_get : wasm_module =
+let m_local_get : wasm_module =
   {
     globals = [];
     functions =
@@ -185,7 +198,11 @@ let module_local_get : wasm_module =
       ];
   }
 
+let _ = ~+("local.get" >:: pos_test m_local_get)
+
 (*
+  Set a public local variable
+
   (module
     (func
       (local i32)
@@ -194,7 +211,7 @@ let module_local_get : wasm_module =
     )
   )
 *)
-let module_local_set =
+let m_local_set =
   {
     globals = [];
     functions =
@@ -208,14 +225,12 @@ let module_local_set =
       ];
   }
 
-let _ = test_check_module true "add consts" module_add_consts
-let _ = test_check_module false "add consts 2" module_add_consts2
-let _ = test_check_module true "nop" module_nop
-let _ = test_check_module true "unreachable" module_uncreachable
-let _ = test_check_module true "drop" module_drop
-let _ = test_check_module false "drop 2" module_drop2
-let _ = test_check_module true "local.set" module_local_set
-let _ = test_check_module true "local.get" module_local_get
+let _ = ~+("local.set" >:: pos_test m_local_set)
+
+(*  ================= End of tests ================== *)
+(*  Run suite! *)
+
+let _ = run_test_tt_main ("SecMiniWasm" >::: !test_list)
 
 (* TODO : Refactor example into test
 

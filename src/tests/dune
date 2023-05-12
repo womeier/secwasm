@@ -1,5 +1,5 @@
 (test
- (libraries secwasm)
+ (libraries secwasm ounit2)
  (name test_secwasm))
 
 (env
