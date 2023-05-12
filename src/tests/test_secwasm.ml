@@ -36,7 +36,7 @@ let m_add_consts : wasm_module =
     functions =
       [
         {
-          ftype = FunType ([], [ I32 ]);
+          ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
           locals = [];
           body = [ WI_Const 1l; WI_Const 1l; WI_BinOp Add ];
           export_name = None;
@@ -63,7 +63,7 @@ let m_add_consts2 : wasm_module =
     functions =
       [
         {
-          ftype = FunType ([], [ I32 ]);
+          ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
           locals = [];
           body = [ WI_Const 1l; WI_BinOp Add ];
           export_name = None;
@@ -88,8 +88,8 @@ let m_nop : wasm_module =
     functions =
       [
         {
-          ftype = FunType ([], []);
-          locals = [ I32 ];
+          ftype = FunType ([], Public, []);
+          locals = [ { t = I32; lbl = Public } ];
           body = [ WI_Nop ];
           export_name = None;
         };
@@ -113,8 +113,8 @@ let m_unreachable : wasm_module =
     functions =
       [
         {
-          ftype = FunType ([], []);
-          locals = [ I32 ];
+          ftype = FunType ([], Public, []);
+          locals = [ { t = I32; lbl = Public } ];
           body = [ WI_Unreachable ];
           export_name = None;
         };
@@ -139,8 +139,8 @@ let m_drop : wasm_module =
     functions =
       [
         {
-          ftype = FunType ([], []);
-          locals = [ I32 ];
+          ftype = FunType ([], Public, []);
+          locals = [ { t = I32; lbl = Public } ];
           body = [ WI_Const 42l; WI_Drop ];
           export_name = None;
         };
@@ -164,8 +164,8 @@ let m_drop : wasm_module =
     functions =
       [
         {
-          ftype = FunType ([], []);
-          locals = [ I32 ];
+          ftype = FunType ([], Public, []);
+          locals = [ { t = I32; lbl = Public } ];
           body = [ WI_Drop ];
           export_name = None;
         };
@@ -190,8 +190,8 @@ let m_local_get : wasm_module =
     functions =
       [
         {
-          ftype = FunType ([], []);
-          locals = [ I32 ];
+          ftype = FunType ([], Public, []);
+          locals = [ { t = I32; lbl = Public } ];
           body = [ WI_LocalGet 0l ];
           export_name = None;
         };
@@ -217,8 +217,8 @@ let m_local_set =
     functions =
       [
         {
-          ftype = FunType ([], []);
-          locals = [ I32 ];
+          ftype = FunType ([], Public, []);
+          locals = [ { t = I32; lbl = Public } ];
           body = [ WI_Const 42l; WI_LocalSet 0l ];
           export_name = None;
         };

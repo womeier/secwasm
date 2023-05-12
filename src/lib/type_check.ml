@@ -94,7 +94,7 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           let lbl3 = lbl1 <> lbl2 <> pc in
           ([ v1; v2 ], [ { t = t1; lbl = lbl3 } ])
       | _ -> t_err0 err_msg_binop)
-  | WI_Call _ -> raise (NotImplemented "local.get")
+  | WI_Call _ -> raise (NotImplemented "call")
   | WI_LocalGet i -> (
       try
         let { t; lbl } = List.nth c.locals (Int32.to_int i) in
@@ -116,9 +116,12 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           else if not (l <> pc <= l') then p_err3 err_msg_globalset2 pc l l';
           ([ h ], [])
       | _ -> t_err0 err_msg_globalset3)
-  | WI_Load -> raise (NotImplemented "load")
-  | WI_Store -> raise (NotImplemented "load")
+  | WI_Load _ -> raise (NotImplemented "load")
+  | WI_Store _ -> raise (NotImplemented "load")
   | WI_If _ -> raise (NotImplemented "if-then-else")
+  | WI_block _ -> raise (NotImplemented "block")
+  | WI_br _ -> raise (NotImplemented "br")
+  | WI_br_if _ -> raise (NotImplemented "br_if")
 
 let rec check_seq (c : context) (pc : pc_type) (seq : wasm_instruction list) :
     labeled_value_type list =
@@ -131,8 +134,7 @@ let rec check_seq (c : context) (pc : pc_type) (seq : wasm_instruction list) :
       pop ins stack @ outs
 
 let type_check_function (c : context) (f : wasm_func) =
-  let map_locals = function (l : value_type) -> { t = l; lbl = Public } in
-  let c' = { c with locals = List.map map_locals f.locals } in
+  let c' = { c with locals = f.locals } in
   let _ = check_seq c' Public f.body in
   ()
 
