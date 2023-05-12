@@ -29,6 +29,8 @@ let test_check_module (expect : bool) (name : string) (m : wasm_module) =
       Printexc.print_backtrace stdout;
       print_endline (Printexc.to_string exn))
 
+(* ======= Type checking tests (positive and negative) ========= *)
+
 (*
   (module
     (func
@@ -71,29 +73,6 @@ let module_add_consts2 =
           ftype = FunType ([], [ I32 ]);
           locals = [];
           body = [ WI_Const 1l; WI_BinOp Add ];
-          export_name = None;
-        };
-      ];
-  }
-
-(*
-  (module
-    (func
-      (local i32)
-      i32.const 42
-      local.set 0
-    )
-  )
-*)
-let module_local_set =
-  {
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], []);
-          locals = [ I32 ];
-          body = [ WI_Const 42l; WI_LocalSet 0l ];
           export_name = None;
         };
       ];
@@ -184,6 +163,51 @@ let module_drop2 =
       ];
   }
 
+(*
+  (module
+    (func
+      (local i32)
+      local.get 0
+    )
+  )
+*)
+let module_local_get =
+  {
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], []);
+          locals = [ I32 ];
+          body = [ WI_LocalGet 0l ];
+          export_name = None;
+        };
+      ];
+  }
+
+(*
+  (module
+    (func
+      (local i32)
+      i32.const 42
+      local.set 0
+    )
+  )
+*)
+let module_local_set =
+  {
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], []);
+          locals = [ I32 ];
+          body = [ WI_Const 42l; WI_LocalSet 0l ];
+          export_name = None;
+        };
+      ];
+  }
+
 let _ = test_check_module true "add consts" module_add_consts
 let _ = test_check_module false "add consts 2" module_add_consts2
 let _ = test_check_module true "nop" module_nop
@@ -191,3 +215,58 @@ let _ = test_check_module true "unreachable" module_uncreachable
 let _ = test_check_module true "drop" module_drop
 let _ = test_check_module false "drop 2" module_drop2
 let _ = test_check_module true "local.set" module_local_set
+let _ = test_check_module true "local.get" module_local_get
+
+(* TODO : Refactor example into test
+
+   let example_module : wasm_module =
+     {
+       globals = [];
+       functions =
+         [
+           {
+             ftype = FunType ([ I32; Public; I32 ], []);
+             locals = [ I32 ];
+             body =
+               [
+                 WI_Nop;
+                 WI_LocalGet 0l;
+                 WI_LocalGet 1l;
+                 WI_BinOp Add;
+                 WI_Const 0l;
+                 WI_BinOp Eq;
+                 WI_If
+                   ( [ WI_Nop; WI_Const 2l; WI_LocalSet 0l ],
+                     [ WI_Const 42l; WI_LocalSet 0l ] );
+               ];
+             export_name = Some "hello";
+           };
+         ];
+     }
+
+   let example_module' =
+     {
+       globals =
+         [
+           { gtype = { t = I32; lbl = Secret }; const = [ WI_Const 40l ] };
+           { gtype = { t = I32; lbl = Public }; const = [ WI_Const 0l ] };
+         ];
+       functions =
+         [
+           {
+             ftype = FunType ([], []);
+             locals = [];
+             body =
+               [
+                 WI_Const 1l;
+                 WI_Const 1l;
+                 WI_BinOp Add;
+                 WI_GlobalGet 0l;
+                 WI_BinOp Add;
+                 WI_GlobalSet 1l;
+               ];
+             export_name = None;
+           };
+         ];
+     }
+*)
