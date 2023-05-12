@@ -47,9 +47,12 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
     (stack : labeled_value_type list) :
     labeled_value_type list * labeled_value_type list =
   match i with
-  | WI_Unreachable -> raise (NotImplemented "unreachable")
-  | WI_Nop -> raise (NotImplemented "nop")
-  | WI_Drop -> raise (NotImplemented "drop")
+  | WI_Unreachable -> ([], [])
+  | WI_Nop -> ([], [])
+  | WI_Drop -> (
+      match stack with
+      | v :: _ -> ([ v ], [])
+      | _ -> raise (TypingError "drop expected 1 value on the stack"))
   | WI_Const _ -> ([], [ { t = I32; lbl = pc } ])
   | WI_BinOp _ -> (
       match stack with
