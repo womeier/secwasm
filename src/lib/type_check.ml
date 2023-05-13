@@ -7,10 +7,6 @@
 open Ast
 open Sec
 
-exception NotImplemented of string
-exception TypingError of string
-exception PrivacyViolation of string
-
 type context = {
   funcs : fun_type list;
   globals : wasm_global list;
@@ -24,10 +20,17 @@ type stack_type = labeled_value_type list
 type stack_of_stacks_type = (stack_type * pc_type) list
 
 (* ======= Notation ============= *)
+
 let ( <> ) v1 v2 = SimpleLattice.lub v1 v2
 let ( <= ) v1 v2 = SimpleLattice.leq v1 v2
 
 (* ======= Error handling ======= *)
+
+exception NotImplemented of string
+exception TypingError of string
+exception PrivacyViolation of string
+
+(* error messages are checked in test-suite, don't inline *)
 
 let err_msg_drop = "drop expected 1 value on the stack"
 let err_msg_binop = "binop: expected 2 values on the stack"
@@ -98,7 +101,7 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
   match i with
   | WI_Unreachable ->
       (* Note: We put no restrictions on the program context,
-         i.e. our approach is termination sensitive! *)
+         i.e. our approach is termination insensitive! *)
       ([], [])
   | WI_Nop -> ([], [])
   | WI_Drop -> (
@@ -145,9 +148,9 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
   | WI_Load _ -> raise (NotImplemented "load")
   | WI_Store _ -> raise (NotImplemented "load")
   | WI_If _ -> raise (NotImplemented "if-then-else")
-  | WI_block _ -> raise (NotImplemented "block")
-  | WI_br _ -> raise (NotImplemented "br")
-  | WI_br_if _ -> raise (NotImplemented "br_if")
+  | WI_Block _ -> raise (NotImplemented "block")
+  | WI_Br _ -> raise (NotImplemented "br")
+  | WI_BrIf _ -> raise (NotImplemented "br_if")
 
 let rec check_seq (c : context) (pc : pc_type) (seq : wasm_instruction list) :
     labeled_value_type list =

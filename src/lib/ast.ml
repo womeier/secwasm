@@ -25,9 +25,9 @@ type wasm_instruction =
   | WI_Load of SimpleLattice.t                                        (* read memory at address *)
   | WI_Store of SimpleLattice.t                                       (* write memory at address *)
   | WI_If of fun_type * wasm_instruction list * wasm_instruction list (* if then else *)
-  | WI_block of fun_type * wasm_instruction list                      (* block *)
-  | WI_br of int32                                                    (* unconditional branch *)
-  | WI_br_if of int32                                                 (* conditional branch *)
+  | WI_Block of fun_type * wasm_instruction list                      (* block *)
+  | WI_Br of int32                                                    (* unconditional branch *)
+  | WI_BrIf of int32                                                  (* conditional branch *)
   | WI_Nop
 
 [@@@ocamlformat "enable"]
@@ -85,9 +85,9 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
       ^ nl ^ spaces indent ^ "else" ^ nl
       ^ pp_instructions (indent + 2) b2
       ^ nl ^ spaces indent ^ "end" ^ nl
-  | WI_block (_, b) -> "(block " ^ nl ^ pp_instructions (indent + 2) b
-  | WI_br idx -> "br " ^ Int32.to_string idx
-  | WI_br_if idx -> "br_if " ^ Int32.to_string idx
+  | WI_Block (_, b) -> "(block " ^ nl ^ pp_instructions (indent + 2) b
+  | WI_Br idx -> "br " ^ Int32.to_string idx
+  | WI_BrIf idx -> "br_if " ^ Int32.to_string idx
 
 let pp_function (f : wasm_func) =
   let ps = match f.ftype with FunType (plist, _, _) -> plist in
