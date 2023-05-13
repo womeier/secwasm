@@ -38,6 +38,7 @@ let ( <= ) v1 v2 = SimpleLattice.leq v1 v2
 (* ======= Error handling ======= *)
 
 exception NotImplemented of string
+exception InternalError of string
 exception TypingError of string
 exception PrivacyViolation of string
 
@@ -123,100 +124,102 @@ let pop (s1 : labeled_value_type list) (s2 : labeled_value_type list) =
   check_stack s1 (Util.List.drop (l2 - l) s2);
   Util.List.take (l2 - l) s2
 
-let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
-    (stack : labeled_value_type list) :
-    labeled_value_type list * labeled_value_type list =
-  match i with
-  | WI_Unreachable ->
-      (* Note: We put no restrictions on the program context,
-         i.e. our approach is termination insensitive! *)
-      ([], [])
-  | WI_Nop -> ([], [])
-  | WI_Drop -> (
-      match stack with v :: _ -> ([ v ], []) | _ -> t_err0 err_msg_drop)
-  | WI_Const _ -> ([], [ { t = I32; lbl = pc } ])
-  | WI_BinOp _ -> (
-      match stack with
-      | ({ t = t1; lbl = lbl1 } as v1) :: ({ t = t2; lbl = lbl2 } as v2) :: _ ->
-          assert (t1 == t2);
-          (* Label should be lbl1 ⊔ lbl2 ⊔ pc *)
-          let lbl3 = lbl1 <> lbl2 <> pc in
-          ([ v1; v2 ], [ { t = t1; lbl = lbl3 } ])
-      | _ -> t_err0 err_msg_binop)
-  | WI_Call _ -> raise (NotImplemented "call")
-  | WI_LocalGet idx -> (
-      try
-        let { t; lbl } = lookup_local c idx in
-        ([], [ { t; lbl = pc <> lbl } ])
-      with _ -> t_err0 err_msg_localget)
-  | WI_LocalSet idx -> (
-      match stack with
-      | ({ t = src; lbl = l } as h) :: _ ->
-          let { t = dst; lbl = l' } = lookup_local c idx in
-          (* Check that types are equal and pc ⊔ l ⊑ l' *)
-          if not (src == dst) then t_err2 err_msg_localset1 src dst
-          else if not (l <> pc <= l') then p_err3 err_msg_localset2 pc l l';
-          ([ h ], [])
-      | _ -> t_err0 err_msg_localset3)
-  | WI_GlobalGet idx ->
-      let { gtype = { t = ty; lbl = lbl' }; const = _; mut = _ } =
-        lookup_global c idx
-      in
-      let lbl = pc <> lbl' in
-      ([], [ { t = ty; lbl } ])
-  | WI_GlobalSet idx -> (
-      match stack with
-      | ({ t = src; lbl = l } as h) :: _ ->
-          let { gtype = { t = dst; lbl = l' }; const = _; mut } =
+let check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
+    : stack_of_stacks_type * context =
+  match g with
+  | (st, pc) :: g' -> (
+      match i with
+      | WI_Unreachable ->
+          (* Note: We put no restrictions on the program context,
+             i.e. our approach is termination insensitive! *)
+          (g, c)
+      | WI_Nop -> (g, c)
+      | WI_Drop -> (
+          match st with
+          | _ :: st' -> ((st', pc) :: g', c)
+          | _ -> t_err0 err_msg_drop)
+      | WI_Const _ -> (({ t = I32; lbl = pc } :: st, pc) :: g', c)
+      | WI_BinOp _ -> (
+          match st with
+          | v1 :: v2 :: st' ->
+              assert (v1.t == v2.t);
+              (* Label should be lbl1 ⊔ lbl2 ⊔ pc *)
+              let lbl3 = v1.lbl <> v2.lbl <> pc in
+              (({ t = v1.t; lbl = lbl3 } :: st', pc) :: g', c)
+          | _ -> t_err0 err_msg_binop)
+      | WI_Call _ -> raise (NotImplemented "call")
+      | WI_LocalGet idx -> (
+          try
+            let { t; lbl } = lookup_local c idx in
+            (({ t; lbl = pc <> lbl } :: st, pc) :: g', c)
+          with _ -> t_err0 err_msg_localget)
+      | WI_LocalSet idx -> (
+          match st with
+          | { t = src; lbl = l } :: st' ->
+              let { t = dst; lbl = l' } = lookup_local c idx in
+              (* Check that types are equal and pc ⊔ l ⊑ l' *)
+              if not (src == dst) then t_err2 err_msg_localset1 src dst
+              else if not (l <> pc <= l') then p_err3 err_msg_localset2 pc l l';
+              ((st', pc) :: g', c)
+          | _ -> t_err0 err_msg_localset3)
+      | WI_GlobalGet idx ->
+          let { gtype = { t = ty; lbl = lbl' }; const = _; mut = _ } =
             lookup_global c idx
           in
-          (* Check that types are equal, var is mutable and pc ⊔ l ⊑ l' *)
-          if not (src == dst) then t_err2 err_msg_globalset1 src dst;
-          if not mut then t_err0 err_msg_globalset_imut;
-          if not (l <> pc <= l') then p_err3 err_msg_globalset2 pc l l';
-          ([ h ], [])
-      | _ -> t_err0 err_msg_globalset3)
-  | WI_Load lm -> (
-      if c.memories == 0l then t_err0 err_msg_load_nomemory
-      else
-        match stack with
-        | { t = addr; lbl = la } :: _ ->
-            if addr != I32 then t_err0 err_msg_load_addr_i32;
-            (* l = l_a ⊔ l_m ⊔ pc *)
-            let lbl = la <> lm <> pc in
-            ([], [ { t = I32; lbl } ])
-        | _ -> t_err0 err_msg_load_addrexists)
-  | WI_Store lm -> (
-      if c.memories == 0l then t_err0 err_msg_store_nomemory
-      else
-        match stack with
-        | ({ t = tval; lbl = lv } as v) :: ({ t = taddr; lbl = la } as a) :: _
-          ->
-            (* Check that addr and val are I32 and pc ⊔ l_a ⊔ l_v ⊑ l_m *)
-            if taddr != I32 then t_err0 err_msg_store_addr_i32;
-            if tval != I32 then t_err0 err_msg_store_val_i32
-            else if not (pc <> la <> lv <= lm) then
-              p_err4 err_msg_store2 pc la lv lm;
-            ([ v; a ], [])
-        | _ -> t_err0 err_msg_store_addrexists)
-  | WI_If _ -> raise (NotImplemented "if-then-else")
-  | WI_Block _ -> raise (NotImplemented "block")
-  | WI_Br _ -> raise (NotImplemented "br")
-  | WI_BrIf _ -> raise (NotImplemented "br_if")
+          let lbl = pc <> lbl' in
+          (({ t = ty; lbl } :: st, pc) :: g', c)
+      | WI_GlobalSet idx -> (
+          match st with
+          | { t = src; lbl = l } :: st' ->
+              let { gtype = { t = dst; lbl = l' }; const = _; mut } =
+                lookup_global c idx
+              in
+              (* Check that types are equal, var is mutable and pc ⊔ l ⊑ l' *)
+              if not (src == dst) then t_err2 err_msg_globalset1 src dst;
+              if not mut then t_err0 err_msg_globalset_imut;
+              if not (l <> pc <= l') then p_err3 err_msg_globalset2 pc l l';
+              ((st', pc) :: g', c)
+          | _ -> t_err0 err_msg_globalset3)
+      | WI_Load lm -> (
+          if c.memories == 0l then t_err0 err_msg_load_nomemory
+          else
+            match st with
+            | { t = addr; lbl = la } :: _ ->
+                if addr != I32 then t_err0 err_msg_load_addr_i32;
+                (* l = l_a ⊔ l_m ⊔ pc *)
+                let lbl = la <> lm <> pc in
+                (({ t = I32; lbl } :: st, pc) :: g', c)
+            | _ -> t_err0 err_msg_load_addrexists)
+      | WI_Store lm -> (
+          if c.memories == 0l then t_err0 err_msg_store_nomemory
+          else
+            match st with
+            | { t = tval; lbl = lv } :: { t = taddr; lbl = la } :: st' ->
+                (* Check that addr and val are I32 and pc ⊔ l_a ⊔ l_v ⊑ l_m *)
+                if taddr != I32 then t_err0 err_msg_store_addr_i32;
+                if tval != I32 then t_err0 err_msg_store_val_i32
+                else if not (pc <> la <> lv <= lm) then
+                  p_err4 err_msg_store2 pc la lv lm;
+                ((st', pc) :: g', c)
+            | _ -> t_err0 err_msg_store_addrexists)
+      | WI_If _ -> raise (NotImplemented "if-then-else")
+      | WI_Block _ -> raise (NotImplemented "block")
+      | WI_Br _ -> raise (NotImplemented "br")
+      | WI_BrIf _ -> raise (NotImplemented "br_if"))
+  | _ -> raise (InternalError "stack-of-stacks ill-formed")
 
-let rec check_seq (c : context) (pc : pc_type) (seq : wasm_instruction list) :
-    labeled_value_type list =
+let rec check_seq (c : context) (seq : wasm_instruction list)
+    (g : stack_of_stacks_type) : stack_of_stacks_type * context =
   match seq with
-  | [] -> []
-  | _ ->
-      let seq', i = Util.List.split_last seq in
-      let stack = check_seq c pc seq' in
-      let ins, outs = check_instr c pc i stack in
-      pop ins stack @ outs
+  | [] -> ([], c)
+  | i :: seq' ->
+      let g', c' = check_instr c i g in
+      check_seq c' seq' g'
 
 let type_check_function (c : context) (f : wasm_func) =
   let c' = { c with locals = f.locals } in
-  let _ = check_seq c' Public f.body in
+  let g_init = [ ([], Public) ] in
+  let _ = check_seq c' f.body g_init in
   ()
 
 let type_check_module (m : wasm_module) =

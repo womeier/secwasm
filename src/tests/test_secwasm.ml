@@ -118,7 +118,7 @@ let m_unreachable : wasm_module =
       [
         {
           ftype = FunType ([], Public, []);
-          locals = [ { t = I32; lbl = Public } ];
+          locals = [];
           body = [ WI_Unreachable ];
           export_name = None;
         };
