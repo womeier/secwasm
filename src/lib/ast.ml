@@ -32,7 +32,11 @@ type wasm_instruction =
 
 [@@@ocamlformat "enable"]
 
-type wasm_global = { gtype : labeled_value_type; const : wasm_instruction list }
+type wasm_global = {
+  gtype : labeled_value_type;
+  const : wasm_instruction list;
+  mut : bool;
+}
 
 type wasm_func = {
   ftype : fun_type;
@@ -127,6 +131,7 @@ let pp_function (f : wasm_func) =
   "(func" ^ export ^ params ^ result ^ nl ^ locals ^ nl ^ body ^ nl ^ ")"
 
 let pp_module (m : wasm_module) =
+  (* TODO: memory, globals, anything else? *)
   "(module" ^ nl
   ^ List.fold_left (fun _s f -> _s ^ nl ^ pp_function f) "" m.functions
   ^ nl ^ ")"
