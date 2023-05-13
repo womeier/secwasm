@@ -32,6 +32,7 @@ let ( ~+ ) t = test_list := !test_list @ [ t ]
 *)
 let m_add_consts : wasm_module =
   {
+    memories = [];
     globals = [];
     functions =
       [
@@ -59,6 +60,7 @@ let _ = ~+("add consts" >:: pos_test m_add_consts)
 *)
 let m_add_consts2 : wasm_module =
   {
+    memories = [];
     globals = [];
     functions =
       [
@@ -84,6 +86,7 @@ let _ = ~+("add consts 2" >:: neg_test m_add_consts2 (TypingError err_msg_binop)
 *)
 let m_nop : wasm_module =
   {
+    memories = [];
     globals = [];
     functions =
       [
@@ -109,6 +112,7 @@ let _ = ~+("nop" >:: pos_test m_nop)
 *)
 let m_unreachable : wasm_module =
   {
+    memories = [];
     globals = [];
     functions =
       [
@@ -135,6 +139,7 @@ let _ = ~+("unreachable" >:: pos_test m_unreachable)
 *)
 let m_drop : wasm_module =
   {
+    memories = [];
     globals = [];
     functions =
       [
@@ -160,6 +165,7 @@ let _ = ~+("drop" >:: pos_test m_drop)
 *)
 let m_drop : wasm_module =
   {
+    memories = [];
     globals = [];
     functions =
       [
@@ -186,6 +192,7 @@ let _ = ~+("drop 2" >:: neg_test m_drop (TypingError err_msg_drop))
 *)
 let m_local_get : wasm_module =
   {
+    memories = [];
     globals = [];
     functions =
       [
@@ -213,6 +220,7 @@ let _ = ~+("local.get" >:: pos_test m_local_get)
 *)
 let m_local_set =
   {
+    memories = [];
     globals = [];
     functions =
       [
@@ -226,6 +234,34 @@ let m_local_set =
   }
 
 let _ = ~+("local.set" >:: pos_test m_local_set)
+
+(*
+  Load from memory
+
+  (module
+    (memory 1)
+    (func
+      i32.const 0
+      load
+    )
+  )
+*)
+let m_load =
+  {
+    memories = [ { min_size = 1l; max_size = None } ];
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body = [ WI_Const 0l; WI_Load Public ];
+          export_name = None;
+        };
+      ];
+  }
+
+let _ = ~+("load" >:: pos_test m_load)
 
 (*  ================= End of tests ================== *)
 (*  Run suite! *)

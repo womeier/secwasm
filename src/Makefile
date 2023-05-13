@@ -8,5 +8,4 @@ clean:
 	rm -f *.wat *.wasm
 
 test:
-	dune fmt
 	dune runtest -f

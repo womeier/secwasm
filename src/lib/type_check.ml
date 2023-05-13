@@ -8,12 +8,23 @@ open Ast
 open Sec
 
 type context = {
+  memories : int32; (* number of memories *)
   funcs : fun_type list;
   globals : wasm_global list;
   locals : labeled_value_type list;
   labels : labeled_value_type list;
   return : labeled_value_type list;
 }
+
+let empty_context =
+  {
+    memories = 0l;
+    funcs = [];
+    globals = [];
+    locals = [];
+    labels = [];
+    return = [];
+  }
 
 type pc_type = SimpleLattice.t
 type stack_type = labeled_value_type list
@@ -29,6 +40,19 @@ let ( <= ) v1 v2 = SimpleLattice.leq v1 v2
 exception NotImplemented of string
 exception TypingError of string
 exception PrivacyViolation of string
+
+let t_err0 msg = raise (TypingError msg)
+
+let t_err2 msg (t1 : value_type) (t2 : value_type) =
+  let error_msg = Printf.sprintf msg (str t1) (str t2) in
+  raise (TypingError error_msg)
+
+let p_err3 msg l1 l2 l3 =
+  let error_msg =
+    Printf.sprintf msg (SimpleLattice.str l1) (SimpleLattice.str l2)
+      (SimpleLattice.str l3)
+  in
+  raise (PrivacyViolation error_msg)
 
 (* error messages are checked in test-suite, don't inline *)
 
@@ -53,18 +77,10 @@ let err_msg_localset2 :
   "local.set: expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
 
 let err_msg_localset3 = "local.set expected 1 value on the stack"
-let t_err0 msg = raise (TypingError msg)
-
-let t_err2 msg (t1 : value_type) (t2 : value_type) =
-  let error_msg = Printf.sprintf msg (str t1) (str t2) in
-  raise (TypingError error_msg)
-
-let p_err3 msg l1 l2 l3 =
-  let error_msg =
-    Printf.sprintf msg (SimpleLattice.str l1) (SimpleLattice.str l2)
-      (SimpleLattice.str l3)
-  in
-  raise (PrivacyViolation error_msg)
+let err_msg_load_nomemory = "load expected memory in the context"
+let err_msg_load_addrexists = "load expected 1 value on the stack"
+let err_msg_load_addr_i32 = "load address is expected to be a i32"
+let err_msg_store_nomemory = "store expected memory in the context"
 
 (* ======= Type checking ======= *)
 
@@ -77,9 +93,6 @@ let lookup_local (c : context) (idx : int32) =
   if Int32.to_int idx < List.length c.locals then
     List.nth c.locals (Int32.to_int idx)
   else failwith ("expected local variable of index " ^ Int32.to_string idx)
-
-let empty_context =
-  { funcs = []; globals = []; locals = []; labels = []; return = [] }
 
 let check_stack s1 s2 =
   assert (
@@ -145,7 +158,16 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           else if not (l <> pc <= l') then p_err3 err_msg_globalset2 pc l l';
           ([ h ], [])
       | _ -> t_err0 err_msg_globalset3)
-  | WI_Load _ -> raise (NotImplemented "load")
+  | WI_Load lm -> (
+      if c.memories == 0l then t_err0 err_msg_load_nomemory
+      else
+        match stack with
+        | { t = addr; lbl = la } :: _ ->
+            if addr != I32 then t_err0 err_msg_load_addr_i32;
+            (* l = l_a ⊔ l_m ⊔ pc *)
+            let lbl = la <> lm <> pc in
+            ([], [ { t = I32; lbl } ])
+        | _ -> t_err0 err_msg_load_addrexists)
   | WI_Store _ -> raise (NotImplemented "load")
   | WI_If _ -> raise (NotImplemented "if-then-else")
   | WI_Block _ -> raise (NotImplemented "block")
@@ -168,6 +190,12 @@ let type_check_function (c : context) (f : wasm_func) =
   ()
 
 let type_check_module (m : wasm_module) =
-  let c = { empty_context with globals = m.globals } in
+  let c =
+    {
+      empty_context with
+      globals = m.globals;
+      memories = Int32.of_int (List.length m.memories);
+    }
+  in
   let _ = List.map (type_check_function c) m.functions in
   ()

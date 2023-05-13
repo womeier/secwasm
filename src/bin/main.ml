@@ -3,6 +3,7 @@ open Secwasm.Type_check
 
 let example1_module : wasm_module =
   {
+    memories = [];
     globals = [];
     functions =
       [
