@@ -75,6 +75,7 @@ let err_msg_globalset2 :
   "global.set: expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
 
 let err_msg_globalset3 = "global.set expected 1 value on the stack"
+let err_msg_globalset_imut = "global.set expected global var to be mutable"
 
 let err_msg_localset1 : (string -> string -> string, unit, string) format =
   "local.set: src/ dst mismatch (src=%s, dst=%s)"
@@ -158,18 +159,21 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           ([ h ], [])
       | _ -> t_err0 err_msg_localset3)
   | WI_GlobalGet idx ->
-      let { gtype = { t = ty; lbl = lbl' }; const = _ } = lookup_global c idx in
+      let { gtype = { t = ty; lbl = lbl' }; const = _; mut = _ } =
+        lookup_global c idx
+      in
       let lbl = pc <> lbl' in
       ([], [ { t = ty; lbl } ])
   | WI_GlobalSet idx -> (
       match stack with
       | ({ t = src; lbl = l } as h) :: _ ->
-          let { gtype = { t = dst; lbl = l' }; const = _ } =
+          let { gtype = { t = dst; lbl = l' }; const = _; mut } =
             lookup_global c idx
           in
-          (* Check that types are equal and pc ⊔ l ⊑ l' *)
-          if not (src == dst) then t_err2 err_msg_globalset1 src dst
-          else if not (l <> pc <= l') then p_err3 err_msg_globalset2 pc l l';
+          (* Check that types are equal, var is mutable and pc ⊔ l ⊑ l' *)
+          if not (src == dst) then t_err2 err_msg_globalset1 src dst;
+          if not mut then t_err0 err_msg_globalset_imut;
+          if not (l <> pc <= l') then p_err3 err_msg_globalset2 pc l l';
           ([ h ], [])
       | _ -> t_err0 err_msg_globalset3)
   | WI_Load lm -> (
