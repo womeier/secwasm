@@ -64,25 +64,25 @@ let p_err4 msg l1 l2 l3 l4 =
 (* error messages are checked in test-suite, don't inline *)
 
 let err_msg_drop = "drop expected 1 value on the stack"
-let err_msg_binop = "binop: expected 2 values on the stack"
-let err_msg_localget = "local.get: lookup out of bounds"
+let err_msg_binop = "binop expected 2 values on the stack"
+let err_msg_localget = "local.get lookup out of bounds"
 
 let err_msg_globalset1 : (string -> string -> string, unit, string) format =
-  "global.set: src/ dst mismatch (src=%s, dst=%s)"
+  "global.set src/ dst mismatch (src=%s, dst=%s)"
 
 let err_msg_globalset2 :
     (string -> string -> string -> string, unit, string) format =
-  "global.set: expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
+  "global.set expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
 
 let err_msg_globalset3 = "global.set expected 1 value on the stack"
 let err_msg_globalset_imut = "global.set expected global var to be mutable"
 
 let err_msg_localset1 : (string -> string -> string, unit, string) format =
-  "local.set: src/ dst mismatch (src=%s, dst=%s)"
+  "local.set src/ dst mismatch (src=%s, dst=%s)"
 
 let err_msg_localset2 :
     (string -> string -> string -> string, unit, string) format =
-  "local.set: expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
+  "local.set expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
 
 let err_msg_localset3 = "local.set expected 1 value on the stack"
 let err_msg_load_nomemory = "load expected memory in the context"
@@ -146,7 +146,7 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
   | WI_Call _ -> raise (NotImplemented "call")
   | WI_LocalGet idx -> (
       try
-        let { t; lbl } = List.nth c.locals (Int32.to_int idx) in
+        let { t; lbl } = lookup_local c idx in
         ([], [ { t; lbl = pc <> lbl } ])
       with _ -> t_err0 err_msg_localget)
   | WI_LocalSet idx -> (
