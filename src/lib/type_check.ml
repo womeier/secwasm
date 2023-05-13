@@ -30,7 +30,7 @@ let ( <= ) v1 v2 = SimpleLattice.leq v1 v2
 (* ======= Error handling ======= *)
 
 let err_msg_drop = "drop expected 1 value on the stack"
-let err_msg_binop = "BinOp: expected 2 values on the stack"
+let err_msg_binop = "binop: expected 2 values on the stack"
 let err_msg_localget = "local.get: lookup out of bounds"
 
 let err_msg_globalset1 : (string -> string -> string, unit, string) format =
@@ -40,7 +40,16 @@ let err_msg_globalset2 :
     (string -> string -> string -> string, unit, string) format =
   "global.set: expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
 
-let err_msg_globalset3 = "SetGlobal expected 1 value on the stack"
+let err_msg_globalset3 = "global.set expected 1 value on the stack"
+
+let err_msg_localset1 : (string -> string -> string, unit, string) format =
+  "local.set: src/ dst mismatch (src=%s, dst=%s)"
+
+let err_msg_localset2 :
+    (string -> string -> string -> string, unit, string) format =
+  "local.set: expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
+
+let err_msg_localset3 = "local.set expected 1 value on the stack"
 let t_err0 msg = raise (TypingError msg)
 
 let t_err2 msg (t1 : value_type) (t2 : value_type) =
@@ -54,8 +63,17 @@ let p_err3 msg l1 l2 l3 =
   in
   raise (PrivacyViolation error_msg)
 
+(* ======= Type checking ======= *)
+
 let lookup_global (c : context) (idx : int32) =
-  List.nth c.globals (Int32.to_int idx)
+  if Int32.to_int idx < List.length c.globals then
+    List.nth c.globals (Int32.to_int idx)
+  else failwith ("expected global variable of index " ^ Int32.to_string idx)
+
+let lookup_local (c : context) (idx : int32) =
+  if Int32.to_int idx < List.length c.locals then
+    List.nth c.locals (Int32.to_int idx)
+  else failwith ("expected local variable of index " ^ Int32.to_string idx)
 
 let empty_context =
   { funcs = []; globals = []; locals = []; labels = []; return = [] }
@@ -95,12 +113,20 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
           ([ v1; v2 ], [ { t = t1; lbl = lbl3 } ])
       | _ -> t_err0 err_msg_binop)
   | WI_Call _ -> raise (NotImplemented "call")
-  | WI_LocalGet i -> (
+  | WI_LocalGet idx -> (
       try
-        let { t; lbl } = List.nth c.locals (Int32.to_int i) in
+        let { t; lbl } = List.nth c.locals (Int32.to_int idx) in
         ([], [ { t; lbl = pc <> lbl } ])
       with _ -> t_err0 err_msg_localget)
-  | WI_LocalSet _ -> raise (NotImplemented "local.set")
+  | WI_LocalSet idx -> (
+      match stack with
+      | ({ t = src; lbl = l } as h) :: _ ->
+          let { t = dst; lbl = l' } = lookup_local c idx in
+          (* Check that types are equal and pc ⊔ l ⊑ l' *)
+          if not (src == dst) then t_err2 err_msg_localset1 src dst
+          else if not (l <> pc <= l') then p_err3 err_msg_localset2 pc l l';
+          ([ h ], [])
+      | _ -> t_err0 err_msg_localset3)
   | WI_GlobalGet idx ->
       let { gtype = { t = ty; lbl = lbl' }; const = _ } = lookup_global c idx in
       let lbl = pc <> lbl' in
