@@ -1,11 +1,7 @@
 
 run:
 	dune build
-	dune exec _build/default/bin/main.exe
-	@echo "--------"
-	@cat out.wat
-	@echo "--------"
-	wat2wasm out.wat
+	dune exec _build/default/bin/main.exe -- -example 1 -typecheck
 
 clean:
 	dune clean
