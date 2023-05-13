@@ -242,7 +242,7 @@ let _ = ~+("local.set" >:: pos_test m_local_set)
     (memory 1)
     (func
       i32.const 0
-      load
+      i32.load
     )
   )
 *)
@@ -262,6 +262,35 @@ let m_load =
   }
 
 let _ = ~+("load" >:: pos_test m_load)
+
+(*
+  Store to memory
+
+  (module
+    (memory 1)
+    (func
+      i32.const 0
+      i32.const 42
+      i32.store
+    )
+  )
+*)
+let m_store =
+  {
+    memories = [ { min_size = 1l; max_size = None } ];
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body = [ WI_Const 0l; WI_Const 42l; WI_Store Public ];
+          export_name = None;
+        };
+      ];
+  }
+
+let _ = ~+("store" >:: pos_test m_store)
 
 (*  ================= End of tests ================== *)
 (*  Run suite! *)

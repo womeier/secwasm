@@ -54,6 +54,13 @@ let p_err3 msg l1 l2 l3 =
   in
   raise (PrivacyViolation error_msg)
 
+let p_err4 msg l1 l2 l3 l4 =
+  let error_msg =
+    Printf.sprintf msg (SimpleLattice.str l1) (SimpleLattice.str l2)
+      (SimpleLattice.str l3) (SimpleLattice.str l4)
+  in
+  raise (PrivacyViolation error_msg)
+
 (* error messages are checked in test-suite, don't inline *)
 
 let err_msg_drop = "drop expected 1 value on the stack"
@@ -81,6 +88,13 @@ let err_msg_load_nomemory = "load expected memory in the context"
 let err_msg_load_addrexists = "load expected 1 value on the stack"
 let err_msg_load_addr_i32 = "load address is expected to be a i32"
 let err_msg_store_nomemory = "store expected memory in the context"
+let err_msg_store_val_i32 = "store expected value of type i32 to store"
+let err_msg_store_addrexists = "store expected 1 value on the stack"
+let err_msg_store_addr_i32 = "store address is expected to be a i32"
+
+let err_msg_store2 :
+    (string -> string -> string -> string -> string, unit, string) format =
+  "store expected pc ⊔ la ⊔ lv ⊑ lm but was pc=%s, la=%s, lv=%s, lm=%s"
 
 (* ======= Type checking ======= *)
 
@@ -168,7 +182,19 @@ let check_instr (c : context) (pc : pc_type) (i : wasm_instruction)
             let lbl = la <> lm <> pc in
             ([], [ { t = I32; lbl } ])
         | _ -> t_err0 err_msg_load_addrexists)
-  | WI_Store _ -> raise (NotImplemented "load")
+  | WI_Store lm -> (
+      if c.memories == 0l then t_err0 err_msg_store_nomemory
+      else
+        match stack with
+        | ({ t = tval; lbl = lv } as v) :: ({ t = taddr; lbl = la } as a) :: _
+          ->
+            (* Check that addr and val are I32 and pc ⊔ l_a ⊔ l_v ⊑ l_m *)
+            if taddr != I32 then t_err0 err_msg_store_addr_i32;
+            if tval != I32 then t_err0 err_msg_store_val_i32
+            else if not (pc <> la <> lv <= lm) then
+              p_err4 err_msg_store2 pc la lv lm;
+            ([ v; a ], [])
+        | _ -> t_err0 err_msg_store_addrexists)
   | WI_If _ -> raise (NotImplemented "if-then-else")
   | WI_Block _ -> raise (NotImplemented "block")
   | WI_Br _ -> raise (NotImplemented "br")
