@@ -271,11 +271,11 @@ match gamma with
 
 | (stack, pc) :: gamma -> 
   let {btype = BlockType {params; result};  instrs} = block in
-  let ctx' = { ctx with labels = (List.rev result) @ ctx.labels } in 
+  let ctx' = { ctx with labels = result @ ctx.labels } in 
   let (t1, st) = pop params stack in 
   let gamma1 = (t1, pc) :: (st, pc) :: gamma in
   match List.fold_left check_instr (gamma1, ctx') instrs with
-  | (t2, _pc') :: (st', pc'') :: gamma', _ when leq_stack t2 (List.rev result) ->
+  | (t2, _pc') :: (st', pc'') :: gamma', _ when leq_stack t2 result ->
     (t2 @ st', lub pc pc'') :: gamma', ctx
 
   | _ -> 
