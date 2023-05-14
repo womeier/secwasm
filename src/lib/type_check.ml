@@ -12,7 +12,7 @@ type context = {
   funcs : fun_type list;
   globals : wasm_global list;
   locals : labeled_value_type list;
-  labels : labeled_value_type list;
+  labels : labeled_value_type list list;
   return : labeled_value_type list;
 }
 
@@ -29,6 +29,39 @@ let empty_context =
 type pc_type = SimpleLattice.t
 type stack_type = labeled_value_type list
 type stack_of_stacks_type = (stack_type * pc_type) list
+
+(* ======= Helpers ============== *)
+
+let split_at_index n l =
+  let rec f n l acc =
+    if n = 0 then (acc, l)
+    else
+      match l with
+      | [] -> failwith "split_at_index: list is empty!"
+      | x :: xs -> f (n - 1) xs (x :: acc)
+  in
+  let fst, lst = f n l [] in
+  (List.rev_append fst [], lst)
+
+(* ======== Debugging ============*)
+
+let str_l (l : pc_type) = match l with Public -> "L" | Secret -> "H"
+let str_t (t : value_type) = match t with I32 -> "I32"
+
+let rec print_g (g : stack_of_stacks_type) =
+  match g with
+  | [] -> "[]"
+  | (st, pc) :: g' ->
+      Printf.sprintf "(%s, %s) :: %s" (print_st st) (str_l pc) (print_g g')
+
+and print_st (st : stack_type) =
+  match st with
+  | [] -> "[]"
+  | { t; lbl } :: st' ->
+      Printf.sprintf "{%s, %s} :: %s" (str_t t) (str_l lbl) (print_st st')
+
+let fail_g g = failwith (print_g g)
+let fail_st st = failwith (print_st st)
 
 (* ======= Notation ============= *)
 
@@ -124,7 +157,15 @@ let pop (s1 : labeled_value_type list) (s2 : labeled_value_type list) =
   check_stack s1 (Util.List.drop (l2 - l) s2);
   Util.List.take (l2 - l) s2
 
-let check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
+let rec check_seq (c : context) (seq : wasm_instruction list)
+    (g : stack_of_stacks_type) : stack_of_stacks_type * context =
+  match seq with
+  | [] -> (g, c)
+  | i :: seq' ->
+      let g', c' = check_instr c i g in
+      check_seq c' seq' g'
+
+and check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
     : stack_of_stacks_type * context =
   match g with
   | (st, pc) :: g' -> (
@@ -203,18 +244,26 @@ let check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
                 ((st', pc) :: g', c)
             | _ -> t_err0 err_msg_store_addrexists)
       | WI_If _ -> raise (NotImplemented "if-then-else")
-      | WI_Block _ -> raise (NotImplemented "block")
+      | WI_Block (FunType (ft_in, _, ft_out), exps) -> (
+          let len_ft_in = List.length ft_in in
+          let st', st'' =
+            try split_at_index len_ft_in st
+            with _ ->
+              raise (TypingError "block: size of stack < size of ft_in")
+          in
+          let g'', c' =
+            check_seq
+              { c with labels = ft_out :: c.labels }
+              exps
+              ((st', pc) :: (st'', pc) :: g')
+          in
+          match g'' with
+          | (st''', pc') :: (st'''', pc'') :: g''' ->
+              ((st''' @ st'''', pc' <> pc'') :: g''', c')
+          | _ -> raise (InternalError "block: stack-of-stacks ill-formed"))
       | WI_Br _ -> raise (NotImplemented "br")
       | WI_BrIf _ -> raise (NotImplemented "br_if"))
   | _ -> raise (InternalError "stack-of-stacks ill-formed")
-
-let rec check_seq (c : context) (seq : wasm_instruction list)
-    (g : stack_of_stacks_type) : stack_of_stacks_type * context =
-  match seq with
-  | [] -> ([], c)
-  | i :: seq' ->
-      let g', c' = check_instr c i g in
-      check_seq c' seq' g'
 
 let type_check_function (c : context) (f : wasm_func) =
   let c' = { c with locals = f.locals } in

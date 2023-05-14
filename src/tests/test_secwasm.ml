@@ -292,6 +292,142 @@ let m_store =
 
 let _ = ~+("store" >:: pos_test m_store)
 
+(*
+  Simple block
+
+  (module
+    (func
+      (block
+        nop
+      end)
+    )
+  )
+*)
+let m_block =
+  {
+    memories = [];
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body = [ WI_Block (FunType ([], Public, []), [ WI_Nop ]) ];
+          export_name = None;
+        };
+      ];
+  }
+
+let _ = ~+("block 1" >:: pos_test m_block)
+
+(*
+  Simple nested block
+
+  (module
+    (func
+      (block
+        (block
+          nop
+        end)
+      end)
+    )
+  )
+*)
+let m_block =
+  {
+    memories = [];
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body =
+            [
+              WI_Block
+                ( FunType ([], Public, []),
+                  [ WI_Block (FunType ([], Public, []), [ WI_Nop ]) ] );
+            ];
+          export_name = None;
+        };
+      ];
+  }
+
+let _ = ~+("nested block" >:: pos_test m_block)
+
+(*
+  Block with simple params
+
+  (module
+    (func
+      i32.const 42
+      (block i32 L ->
+        drop
+      end)
+    )
+  )
+*)
+let m_block =
+  {
+    memories = [];
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body =
+            [
+              WI_Const 42l;
+              WI_Block
+                ( FunType ([ { t = I32; lbl = Public } ], Public, []),
+                  [ WI_Drop ] );
+            ];
+          export_name = None;
+        };
+      ];
+  }
+
+let _ = ~+("block with simple param" >:: pos_test m_block)
+
+(*
+  Block with simple params is ill-typed since stack is empty
+
+  (module
+    (func
+      i32.const 42
+      (block i32 L -> i32 L
+        drop
+      end)
+    )
+  )
+*)
+let m_block =
+  {
+    memories = [];
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body =
+            [
+              WI_Const 42l;
+              WI_Block
+                ( FunType
+                    ( [ { t = I32; lbl = Public } ],
+                      Public,
+                      [ { t = I32; lbl = Public } ] ),
+                  [ WI_Drop ] );
+            ];
+          export_name = None;
+        };
+      ];
+  }
+
+let _ = ~+("block with simple param" >:: pos_test m_block)
+
 (*  ================= End of tests ================== *)
 (*  Run suite! *)
 
