@@ -73,7 +73,7 @@ let m_add_consts2 : wasm_module =
       ];
   }
 
-let _ = ~+("add consts 2" >:: neg_test m_add_consts2 (TypingError err_msg_binop))
+let _ = ~+("add consts 2" >:: neg_test m_add_consts2 err_binop)
 
 (*
   Nop is well-typed
@@ -178,7 +178,7 @@ let m_drop : wasm_module =
       ];
   }
 
-let _ = ~+("drop 2" >:: neg_test m_drop (TypingError err_msg_drop))
+let _ = ~+("drop 2" >:: neg_test m_drop err_drop)
 
 (*
   Get a public local variable
@@ -395,8 +395,39 @@ let _ = ~+("block with simple param" >:: pos_test m_block)
 
   (module
     (func
-      i32.const 42
-      (block i32 L -> i32 L
+      (block i32 L ->
+        nop
+      end)
+    )
+  )
+*)
+let m_block =
+  {
+    memories = [];
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body =
+            [
+              WI_Block
+                (FunType ([ { t = I32; lbl = Public } ], Public, []), [ WI_Nop ]);
+            ];
+          export_name = None;
+        };
+      ];
+  }
+
+let _ = ~+("block with simple param neg 1" >:: neg_test m_block (err_block1 1 0))
+
+(*
+  Block with simple params is ill-typed since stack is empty
+
+  (module
+    (func
+      (block i32 L ->
         drop
       end)
     )
@@ -426,7 +457,7 @@ let m_block =
       ];
   }
 
-let _ = ~+("block with simple param" >:: pos_test m_block)
+let _ = ~+("block with simple param neg 2" >:: neg_test m_block (err_block2 1 0))
 
 (*  ================= End of tests ================== *)
 (*  Run suite! *)
