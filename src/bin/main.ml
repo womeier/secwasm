@@ -11,9 +11,12 @@ let example1_module : SimpleLattice.t wasm_module =
         {
           ftype =
             FunType
-              {params = [ { t = I32; lbl = Public }; { t = I32; lbl = Public } ];
+              {
+                params =
+                  [ { t = I32; lbl = Public }; { t = I32; lbl = Public } ];
                 label = Public;
-                result = []};
+                result = [];
+              };
           locals = [ { t = I32; lbl = Public }; { t = I32; lbl = Public } ];
           body =
             [
@@ -24,7 +27,7 @@ let example1_module : SimpleLattice.t wasm_module =
               WI_Const 0l;
               WI_BinOp Eq;
               WI_If
-                ( FunType {params = []; label = Public; result = []},
+                ( FunType { params = []; label = Public; result = [] },
                   [ WI_Nop; WI_Const 2l; WI_LocalSet 0l ],
                   [ WI_Const 42l; WI_LocalSet 0l ] );
             ];
@@ -78,7 +81,7 @@ let usage_msg =
 let typecheck_module (m : SimpleLattice.t wasm_module) =
   print_endline "Typechecking module...";
   flush stdout;
-  let module TC = (val type_checker simple_lat) in 
+  let module TC = (val type_checker simple_lat) in
   TC.type_check_module m
 
 let output_module m =

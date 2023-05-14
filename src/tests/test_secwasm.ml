@@ -4,11 +4,10 @@ open Secwasm.Sec
 open OUnit2
 
 type res = exn option
-
 type lt = SimpleLattice.t
 
 let test_check_module (expect : res) (m : lt wasm_module) (_ : test_ctxt) =
-  let module TC = (val type_checker simple_lat) in 
+  let module TC = (val type_checker simple_lat) in
   let f () = TC.type_check_module m in
   match expect with
   | None -> assert_equal () (f ())
@@ -41,7 +40,13 @@ let m_add_consts : lt wasm_module =
     functions =
       [
         {
-          ftype = FunType {params = []; label = Public; result = [ { t = I32; lbl = Public } ]};
+          ftype =
+            FunType
+              {
+                params = [];
+                label = Public;
+                result = [ { t = I32; lbl = Public } ];
+              };
           locals = [];
           body = [ WI_Const 1l; WI_Const 1l; WI_BinOp Add ];
           export_name = None;
@@ -69,7 +74,13 @@ let m_add_consts2 : lt wasm_module =
     functions =
       [
         {
-          ftype = FunType {params = []; label = Public; result = [ { t = I32; lbl = Public } ]};
+          ftype =
+            FunType
+              {
+                params = [];
+                label = Public;
+                result = [ { t = I32; lbl = Public } ];
+              };
           locals = [];
           body = [ WI_Const 1l; WI_BinOp Add ];
           export_name = None;
@@ -95,7 +106,7 @@ let m_nop : lt wasm_module =
     functions =
       [
         {
-          ftype = FunType {params = []; label = Public; result = []};
+          ftype = FunType { params = []; label = Public; result = [] };
           locals = [ { t = I32; lbl = Public } ];
           body = [ WI_Nop ];
           export_name = None;
@@ -121,7 +132,7 @@ let m_unreachable : lt wasm_module =
     functions =
       [
         {
-          ftype = FunType {params = []; label = Public; result = []};
+          ftype = FunType { params = []; label = Public; result = [] };
           locals = [ { t = I32; lbl = Public } ];
           body = [ WI_Unreachable ];
           export_name = None;
@@ -148,7 +159,7 @@ let m_drop : lt wasm_module =
     functions =
       [
         {
-          ftype = FunType {params = []; label = Public; result = []};
+          ftype = FunType { params = []; label = Public; result = [] };
           locals = [ { t = I32; lbl = Public } ];
           body = [ WI_Const 42l; WI_Drop ];
           export_name = None;
@@ -174,7 +185,7 @@ let m_drop : lt wasm_module =
     functions =
       [
         {
-          ftype = FunType {params = []; label = Public; result = []};
+          ftype = FunType { params = []; label = Public; result = [] };
           locals = [ { t = I32; lbl = Public } ];
           body = [ WI_Drop ];
           export_name = None;
@@ -201,7 +212,13 @@ let m_local_get : lt wasm_module =
     functions =
       [
         {
-          ftype = FunType {params = []; label = Public; result = [{ t = I32; lbl = Public }]};
+          ftype =
+            FunType
+              {
+                params = [];
+                label = Public;
+                result = [ { t = I32; lbl = Public } ];
+              };
           locals = [ { t = I32; lbl = Public } ];
           body = [ WI_LocalGet 0l ];
           export_name = None;
@@ -229,7 +246,7 @@ let m_local_set =
     functions =
       [
         {
-          ftype = FunType {params = []; label = Public; result = []};
+          ftype = FunType { params = []; label = Public; result = [] };
           locals = [ { t = I32; lbl = Public } ];
           body = [ WI_Const 42l; WI_LocalSet 0l ];
           export_name = None;
@@ -257,7 +274,13 @@ let m_load =
     functions =
       [
         {
-          ftype = FunType {params = []; label = Public; result = [{ t = I32; lbl = Public }]};
+          ftype =
+            FunType
+              {
+                params = [];
+                label = Public;
+                result = [ { t = I32; lbl = Public } ];
+              };
           locals = [];
           body = [ WI_Const 0l; WI_Load Public ];
           export_name = None;
@@ -286,7 +309,7 @@ let m_store =
     functions =
       [
         {
-          ftype = FunType {params = []; label = Public; result = []};
+          ftype = FunType { params = []; label = Public; result = [] };
           locals = [];
           body = [ WI_Const 0l; WI_Const 42l; WI_Store Public ];
           export_name = None;

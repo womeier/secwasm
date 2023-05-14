@@ -7,8 +7,13 @@ let str (t : value_type) = match t with I32 -> "I32"
 (* This is equivalent to tau in the paper (typing judgements) *)
 type 'lt labeled_value_type = { t : value_type; lbl : 'lt }
 type 'lt stack_type = 'lt labeled_value_type list
-type 'lt fun_type = FunType of { params: 'lt stack_type; label: 'lt; result: 'lt stack_type }
-type 'lt block_type = BlockType of { params: 'lt stack_type; result: 'lt stack_type }
+
+type 'lt fun_type =
+  | FunType of { params : 'lt stack_type; label : 'lt; result : 'lt stack_type }
+
+type 'lt block_type =
+  | BlockType of { params : 'lt stack_type; result : 'lt stack_type }
+
 type binop = Add | Eq
 
 [@@@ocamlformat "disable"]
@@ -47,12 +52,13 @@ type 'lt wasm_func = {
   export_name : string option; (* export name, should start with '$' *)
 }
 
-type 'lt wasm_memory = { min_size : int32; max_size : int32 option } (* in #pages *)
+type 'lt wasm_memory = { min_size : int32; max_size : int32 option }
+(* in #pages *)
 
 type 'lt wasm_module = {
   globals : 'lt wasm_global list;
   functions : 'lt wasm_func list;
-  memories :'lt wasm_memory list;
+  memories : 'lt wasm_memory list;
 }
 
 (************************* PRETTY PRINTING ************************************)
@@ -65,7 +71,8 @@ let pp_labeled_type (t : 'lt labeled_value_type) =
 let nl = "\n"
 
 let rec pp_instruction (indent : int) (instr : 'lt wasm_instruction) =
-  let pp_instructions (indent' : int) (instructions : 'lt wasm_instruction list) =
+  let pp_instructions (indent' : int) (instructions : 'lt wasm_instruction list)
+      =
     List.fold_left
       (fun _s i -> _s ^ pp_instruction indent' i ^ nl)
       "" instructions
@@ -97,12 +104,13 @@ let rec pp_instruction (indent : int) (instr : 'lt wasm_instruction) =
       ^ nl ^ spaces indent ^ "else" ^ nl
       ^ pp_instructions (indent + 2) b2
       ^ nl ^ spaces indent ^ "end" ^ nl
-  | WI_Block {instrs; _}-> "(block " ^ nl ^ pp_instructions (indent + 2) instrs
+  | WI_Block { instrs; _ } ->
+      "(block " ^ nl ^ pp_instructions (indent + 2) instrs
   | WI_Br idx -> "br " ^ Int32.to_string idx
   | WI_BrIf idx -> "br_if " ^ Int32.to_string idx
 
 let pp_function (f : 'lt wasm_func) =
-  let ps = match f.ftype with FunType {params = plist; _} -> plist in
+  let ps = match f.ftype with FunType { params = plist; _ } -> plist in
 
   let locals =
     if List.length f.locals > 0 then
@@ -118,8 +126,8 @@ let pp_function (f : 'lt wasm_func) =
     else ""
   and result =
     match f.ftype with
-    | FunType {result = []; _} -> ""
-    | FunType {result = [ res ]; _} -> " (result " ^ pp_labeled_type res ^ ")"
+    | FunType { result = []; _ } -> ""
+    | FunType { result = [ res ]; _ } -> " (result " ^ pp_labeled_type res ^ ")"
     | _ ->
         failwith
           "PP error, instruction return type can be at most a single value"
