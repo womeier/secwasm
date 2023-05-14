@@ -1,7 +1,8 @@
 open Secwasm.Ast
 open Secwasm.Type_check
+open Secwasm.Sec
 
-let example1_module : wasm_module =
+let example1_module : SimpleLattice.t wasm_module =
   {
     memories = [];
     globals = [];
@@ -10,9 +11,9 @@ let example1_module : wasm_module =
         {
           ftype =
             FunType
-              ( [ { t = I32; lbl = Public }; { t = I32; lbl = Public } ],
-                Public,
-                [] );
+              {params = [ { t = I32; lbl = Public }; { t = I32; lbl = Public } ];
+                label = Public;
+                result = []};
           locals = [ { t = I32; lbl = Public }; { t = I32; lbl = Public } ];
           body =
             [
@@ -23,7 +24,7 @@ let example1_module : wasm_module =
               WI_Const 0l;
               WI_BinOp Eq;
               WI_If
-                ( FunType ([], Public, []),
+                ( FunType {params = []; label = Public; result = []},
                   [ WI_Nop; WI_Const 2l; WI_LocalSet 0l ],
                   [ WI_Const 42l; WI_LocalSet 0l ] );
             ];
@@ -74,10 +75,11 @@ let usage_msg =
 
   *)
 
-let typecheck_module m =
+let typecheck_module (m : SimpleLattice.t wasm_module) =
   print_endline "Typechecking module...";
   flush stdout;
-  type_check_module m
+  let module TC = (val type_checker simple_lat) in 
+  TC.type_check_module m
 
 let output_module m =
   print_endline ("Printing to " ^ !output_file ^ "...");
