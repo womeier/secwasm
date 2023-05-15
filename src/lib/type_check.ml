@@ -173,6 +173,9 @@ let check_stack s1 s2 =
          (fun { t = t1; lbl = _lbl1 } { t = t2; lbl = _lbl2 } -> t1 == t2)
          s1 s2)
 
+let leq_ty { t = t1; lbl = l1 } { t = t2; lbl = l2 } = t1 == t2 && l1 <= l2
+let leq_stack s1 s2 = List.for_all2 leq_ty s1 s2
+
 let rec check_instr ((g, c) : stack_of_stacks_type * context)
     (i : wasm_instruction) : stack_of_stacks_type * context =
   match g with
@@ -250,28 +253,31 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
                 ((st', pc) :: g', c)
             | _ -> raise err_store_addrexists)
       | WI_If _ -> raise (NotImplemented "if-then-else")
-      | WI_Block (BlockType (bt_in, bt_out), exps) -> (
-          let lft_in = List.length bt_in in
-          let lft_out = List.length bt_out in
-          let lst = List.length st in
-          if lft_in > lst then raise (err_block1 lft_in lst)
-          else
-            let st', st'' = split_at_index lft_in st in
-            let g_, c' =
-              List.fold_left check_instr
-                ( (st', pc) :: (st'', pc) :: g',
-                  { c with labels = bt_out :: c.labels } )
-                exps
-            in
-            match g_ with
-            | (st_, pc_) :: (st_', pc_') :: g_' ->
-                let lst_ = List.length st_ in
-                if lst_ < lft_out then raise (err_block2 lft_out lst_)
-                else ((st_ @ st_', pc_ <> pc_') :: g_', c')
-            | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
+      | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps)
       | WI_Br _ -> raise (NotImplemented "br")
       | WI_BrIf _ -> raise (NotImplemented "br_if"))
   | _ -> raise (InternalError "stack-of-stacks ill-formed")
+
+and type_check_block ((g, c) : stack_of_stacks_type * context)
+    ((BlockType (bt_in, bt_out), instrs) : block_type * wasm_instruction list) =
+  match g with
+  | [] -> raise (InternalError "blocks: stack-of-stacks ill-formed")
+  | (st, pc) :: g -> (
+      let c' = { c with labels = bt_in :: c.labels } in
+      let bt_in_len = List.length bt_in in
+      let bt_out_len = List.length bt_out in
+      let st_len = List.length st in
+      if bt_in_len > st_len then raise (err_block1 bt_in_len st_len);
+      let t1, st = split_at_index bt_in_len st in
+      if not @@ leq_stack t1 bt_in then failwith "TODO: Err msg";
+      let g_ = (t1, pc) :: (st, pc) :: g in
+      match List.fold_left check_instr (g_, c') instrs with
+      | (t2, _pc') :: (st', pc'') :: g', _ ->
+          let t2_len = List.length t2 in
+          if bt_out_len > t2_len then raise (err_block2 bt_out_len t2_len);
+          if not @@ leq_stack t2 bt_out then failwith "TODO: Err msg";
+          ((t2 @ st', pc <> pc'') :: g', c)
+      | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
 let type_check_function (c : context) (f : wasm_func) =
   let c' = { c with locals = f.locals } in
