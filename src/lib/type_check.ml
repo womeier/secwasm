@@ -154,6 +154,14 @@ let err_block2 i1 i2 =
   TypingError
     (Printf.sprintf "block must leave %d values on the stack (found %d)" i1 i2)
 
+let err_block3 s1 s2 =
+  TypingError
+    (Printf.sprintf "block needs values with types ⊑ %s on the stack (found %s)" (print_st s1) (print_st s2))
+
+let err_block4 s1 s2 =
+  TypingError
+    (Printf.sprintf "block must leave values with types ⊑ %s on the stack (found %s)" (print_st s1) (print_st s2))
+
 (* ======= Type checking ======= *)
 
 let lookup_global (c : context) (idx : int32) =
@@ -269,13 +277,13 @@ and type_check_block ((g, c) : stack_of_stacks_type * context)
       let st_len = List.length st in
       if bt_in_len > st_len then raise (err_block1 bt_in_len st_len);
       let t1, st = split_at_index bt_in_len st in
-      if not (leq_stack t1 bt_in) then failwith "TODO: Err msg";
+      if not (leq_stack t1 bt_in) then raise (err_block3 bt_in t1);
       let g_ = (t1, pc) :: (st, pc) :: g in
       match List.fold_left check_instr (g_, c') instrs with
       | (t2, _pc') :: (st', pc'') :: g', _ ->
           let t2_len = List.length t2 in
           if bt_out_len > t2_len then raise (err_block2 bt_out_len t2_len);
-          if not (leq_stack t2 bt_out) then failwith "TODO: Err msg";
+          if not (leq_stack t2 bt_out) then raise (err_block4 bt_out t2);
           ((t2 @ st', pc <> pc'') :: g', c)
       | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
