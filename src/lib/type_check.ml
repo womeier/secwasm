@@ -269,13 +269,13 @@ and type_check_block ((g, c) : stack_of_stacks_type * context)
       let st_len = List.length st in
       if bt_in_len > st_len then raise (err_block1 bt_in_len st_len);
       let t1, st = split_at_index bt_in_len st in
-      if not @@ leq_stack t1 bt_in then failwith "TODO: Err msg";
+      if not (leq_stack t1 bt_in) then failwith "TODO: Err msg";
       let g_ = (t1, pc) :: (st, pc) :: g in
       match List.fold_left check_instr (g_, c') instrs with
       | (t2, _pc') :: (st', pc'') :: g', _ ->
           let t2_len = List.length t2 in
           if bt_out_len > t2_len then raise (err_block2 bt_out_len t2_len);
-          if not @@ leq_stack t2 bt_out then failwith "TODO: Err msg";
+          if not (leq_stack t2 bt_out) then failwith "TODO: Err msg";
           ((t2 @ st', pc <> pc'') :: g', c)
       | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
@@ -283,8 +283,12 @@ let type_check_function (c : context) (f : wasm_func) =
   let { ftype = FunType (_ft_in, _lbl, ft_out); locals; body; _ } = f in
   let c' = { c with locals } in
   let g_init = [ ([], Public) ] in
-  match type_check_block (g_init, c') (BlockType ([], ft_out), body) with
-  | [ (_st, _pc) ], _ -> ()
+  match List.fold_left check_instr (g_init, c') body with
+  | [ (st, _pc) ], _ ->
+      let ft_out_len = List.length ft_out in
+      let st_len = List.length st in
+      if not (ft_out_len = st_len) then failwith "TODO: Err msg";
+      if not (leq_stack st ft_out) then failwith "TODO: Err msg"
   | _ -> raise (InternalError "function: stack-of-stacks ill-formed")
 
 let type_check_module (m : wasm_module) =
