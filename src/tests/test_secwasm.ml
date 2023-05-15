@@ -88,7 +88,7 @@ let m_add_consts2 : lt wasm_module =
       ];
   }
 
-(* let _ = ~+("add consts 2" >:: neg_test m_add_consts2 (TypingError err_msg_binop)) *)
+let _ = ~+("add consts 2" >:: neg_test m_add_consts2 err_binop)
 
 (*
   Nop is well-typed
@@ -318,6 +318,96 @@ let m_store =
   }
 
 let _ = ~+("store" >:: pos_test m_store)
+
+
+let m_block_params_missing = 
+  let block = 
+    {
+      btype = BlockType {params = [{t = I32; lbl = Public}]; result = []};
+      instrs = [WI_Nop]
+    } in 
+    {
+      empty_module with 
+      functions =
+        [
+          {
+            ftype = FunType { params = []; label = Public; result = [] };
+            locals = [];
+            body = [ WI_Block block ];
+            export_name = None;
+          };
+        ];
+    }
+
+let _ = ~+("block params missing" >:: neg_test m_block_params_missing err_not_enough_values_on_stack)
+
+let m_block_return_missing = 
+  let block = 
+    {
+      btype = BlockType {params = []; result = [{t = I32; lbl = Public}]};
+      instrs = [WI_Nop]
+    } in 
+    {
+      empty_module with 
+      functions =
+        [
+          {
+            ftype = FunType { params = []; label = Public; result = [] };
+            locals = [];
+            body = [ WI_Block block ];
+            export_name = None;
+          };
+        ];
+    }
+
+let _ = ~+("block params missing" >:: neg_test m_block_return_missing err_block_return_missing)
+
+let m_block1 = 
+  let block = 
+    {
+      btype = BlockType {params = [{t = I32; lbl = Public}]; result = [{t = I32; lbl = Public}]};
+      instrs = [WI_Const 1l; WI_BinOp Add]
+    } in 
+    {
+      empty_module with 
+      functions =
+        [
+          {
+            ftype = FunType { params = []; label = Public; result = [] };
+            locals = [];
+            body = [ WI_Const 1l; WI_Block block; WI_Drop ];
+            export_name = None;
+          };
+        ];
+    }
+
+let _ = ~+("block 1" >:: pos_test m_block1)
+
+let m_nested_block = 
+  let block_inner = 
+    {
+      btype = BlockType {params = [{t = I32; lbl = Public}]; result = [{t = I32; lbl = Public}]};
+      instrs = [WI_Const 1l; WI_BinOp Add]
+    } in 
+  let block_outer = 
+    {
+      btype = BlockType {params = []; result = [{t = I32; lbl = Public}]};
+      instrs = [WI_Const 1l; WI_Block block_inner]
+    } in 
+    {
+      empty_module with 
+      functions =
+        [
+          {
+            ftype = FunType { params = []; label = Public; result = [] };
+            locals = [];
+            body = [WI_Block block_outer; WI_Drop ];
+            export_name = None;
+          };
+        ];
+    }
+
+let _ = ~+("nested block" >:: pos_test m_nested_block)
 
 (*  ================= End of tests ================== *)
 (*  Run suite! *)

@@ -61,6 +61,8 @@ type 'lt wasm_module = {
   memories : 'lt wasm_memory list;
 }
 
+let empty_module = {globals = []; functions = []; memories = []}
+
 (************************* PRETTY PRINTING ************************************)
 
 let pp_type (t : value_type) = match t with I32 -> "i32"

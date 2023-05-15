@@ -15,6 +15,12 @@ exception PrivacyViolation of string
 let err_drop = TypingError "drop expected 1 value on the stack"
 let err_binop = TypingError "binop expected 2 values on the stack"
 let err_localget = TypingError "local.get lookup out of bounds"
+let err_block_params_missing = TypingError "block params not on stack"
+let err_block_return_missing = TypingError "block return not on stack"
+
+let err_not_enough_values_on_stack = TypingError "not enough values on stack"
+
+let err_incorrect_values_on_stack = TypingError "incorrect values on stack"
 
 module type TYPECHECKER = sig
   type lt
@@ -122,14 +128,6 @@ let type_checker (type label_type) (lat : label_type lattice) =
            "store expected pc ⊔ la ⊔ lv ⊑ lm but was pc=%s, la=%s, lv=%s, lm=%s"
            (lbl_to_str l1) (lbl_to_str l2) (lbl_to_str l3) (lbl_to_str l4))
 
-    let err_block1 i1 i2 =
-      TypingError
-        (Printf.sprintf "block needs %d values on the stack (found %d)" i1 i2)
-
-    let err_block2 i1 i2 =
-      TypingError
-        (Printf.sprintf "block must leave %d values on the stack (found %d)" i1
-           i2)
     (* ======= Type checking ======= *)
 
     let lookup_global (c : context) (idx : int32) =
@@ -157,10 +155,16 @@ let type_checker (type label_type) (lat : label_type lattice) =
       List.length lstack == List.length rstack && match_prefix lstack rstack
 
     let pop expected stack =
-      let n = List.length expected in
-      let got = Util.List.take n stack in
-      if leq_stack got expected then (got, Util.List.drop n stack)
-      else failwith "not implemented"
+      let rec pop_aux acc n st = 
+        match (n, st) with
+        | 0, _ -> (acc, st)
+        | n, t :: st' when n > 0 -> pop_aux (t :: acc) (n-1) st'
+        | _ -> raise err_not_enough_values_on_stack
+      in
+      let (got, stack') = pop_aux [] (List.length expected) stack in
+      if leq_stack got expected then (got, stack')
+      else raise err_incorrect_values_on_stack
+    
 
     let rec check_instr ((gamma, c) : stack_of_stacks_type * context) i =
       match gamma with
@@ -249,15 +253,18 @@ let type_checker (type label_type) (lat : label_type lattice) =
     and type_check_block (ctx : context) (gamma : stack_of_stacks_type)
         (block : lt wasm_block) =
       match gamma with
-      | [] -> failwith "TODO: Err msg"
+      | [] -> raise (InternalError "blocks: stack-of-stacks ill-formed")
       | (stack, pc) :: gamma -> (
           let { btype = BlockType { params; result }; instrs } = block in
           let ctx' = { ctx with labels = result @ ctx.labels } in
           let t1, st = pop params stack in
           let gamma1 = (t1, pc) :: (st, pc) :: gamma in
           match List.fold_left check_instr (gamma1, ctx') instrs with
-          | (t2, _pc') :: (st', pc'') :: gamma', _ when leq_stack t2 result ->
-              ((t2 @ st', lub pc pc'') :: gamma', ctx)
+          | (t2, _pc') :: (st', pc'') :: gamma', _ -> (
+              if leq_stack t2 result then 
+                ((t2 @ st', lub pc pc'') :: gamma', ctx)
+              else 
+                raise err_block_return_missing)
           | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
     let type_check_function (ctx : context) f =
