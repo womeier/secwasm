@@ -513,7 +513,7 @@ let m_block_output_stack_incorrect =
   }
 
 let _ =
-  ~+("block input stack incorrectly typed"
+  ~+("block output stack incorrectly typed"
     >:: neg_test m_block_output_stack_incorrect
           (err_block4
              [ { t = I32; lbl = Public } ]
