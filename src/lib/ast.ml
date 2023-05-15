@@ -61,7 +61,7 @@ type 'lt wasm_module = {
   memories : 'lt wasm_memory list;
 }
 
-let empty_module = {globals = []; functions = []; memories = []}
+let empty_module = { globals = []; functions = []; memories = [] }
 
 (************************* PRETTY PRINTING ************************************)
 

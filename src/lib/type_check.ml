@@ -17,9 +17,7 @@ let err_binop = TypingError "binop expected 2 values on the stack"
 let err_localget = TypingError "local.get lookup out of bounds"
 let err_block_params_missing = TypingError "block params not on stack"
 let err_block_return_missing = TypingError "block return not on stack"
-
 let err_not_enough_values_on_stack = TypingError "not enough values on stack"
-
 let err_incorrect_values_on_stack = TypingError "incorrect values on stack"
 
 module type TYPECHECKER = sig
@@ -28,6 +26,11 @@ module type TYPECHECKER = sig
   val type_check_module : lt wasm_module -> unit
 end
 
+(*
+   Takes an instance of a lattice with a given label type
+   and creates a 'type-checker' for it.
+   The type-checker is a (ocaml) module with the above signature (TYPECHECKER)
+*)
 let type_checker (type label_type) (lat : label_type lattice) =
   (module struct
     type lt = label_type
@@ -140,10 +143,17 @@ let type_checker (type label_type) (lat : label_type lattice) =
         List.nth c.locals (Int32.to_int idx)
       else failwith ("expected local variable of index " ^ Int32.to_string idx)
 
+    (* Check that labeled type lty is 'less than' rty, according to paper:
+       lty = {t = t1; lbl = lbl1}, rty = {t = t2; lbl = lbl2}
+        lty ⊑ rty iff t1 = t2 ∧ lbl1 ⊑ lbl2 *)
     let leq_ty (lty : lv_ty) (rty : lv_ty) =
       match (lty, rty) with
       | { t = I32; lbl = lbl1 }, { t = I32; lbl = lbl2 } -> leq lbl1 lbl2
 
+    (* Check that a list of labeled types is a prefix of the stack.
+       Assume that prefix has length n,
+       then for all t1 ∈ prefix, t2 ∈ stack[:n]: t1 ⊑ t2
+       where *)
     let rec match_prefix prefix stack =
       match (prefix, stack) with
       | [], _ -> true
@@ -155,16 +165,15 @@ let type_checker (type label_type) (lat : label_type lattice) =
       List.length lstack == List.length rstack && match_prefix lstack rstack
 
     let pop expected stack =
-      let rec pop_aux acc n st = 
+      let rec pop_aux acc n st =
         match (n, st) with
         | 0, _ -> (acc, st)
-        | n, t :: st' when n > 0 -> pop_aux (t :: acc) (n-1) st'
+        | n, t :: st' when n > 0 -> pop_aux (t :: acc) (n - 1) st'
         | _ -> raise err_not_enough_values_on_stack
       in
-      let (got, stack') = pop_aux [] (List.length expected) stack in
+      let got, stack' = pop_aux [] (List.length expected) stack in
       if leq_stack got expected then (got, stack')
       else raise err_incorrect_values_on_stack
-    
 
     let rec check_instr ((gamma, c) : stack_of_stacks_type * context) i =
       match gamma with
@@ -260,13 +269,15 @@ let type_checker (type label_type) (lat : label_type lattice) =
           let t1, st = pop params stack in
           let gamma1 = (t1, pc) :: (st, pc) :: gamma in
           match List.fold_left check_instr (gamma1, ctx') instrs with
-          | (t2, _pc') :: (st', pc'') :: gamma', _ -> (
-              if leq_stack t2 result then 
+          | (t2, _pc') :: (st', pc'') :: gamma', _ ->
+              if leq_stack t2 result then
                 ((t2 @ st', lub pc pc'') :: gamma', ctx)
-              else 
-                raise err_block_return_missing)
+              else raise err_block_return_missing
           | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
+    (* Type-checking a function (f : params -> result) is
+       the same as type-checking a block (b : [] -> result) in
+       a context c where c.locals have been extended with params *)
     let type_check_function (ctx : context) f =
       let { ftype = FunType { params; result; _ }; locals; body; _ } = f in
       let ctx' = { ctx with locals = params @ locals } in
