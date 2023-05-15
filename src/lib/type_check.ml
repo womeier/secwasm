@@ -173,16 +173,8 @@ let check_stack s1 s2 =
          (fun { t = t1; lbl = _lbl1 } { t = t2; lbl = _lbl2 } -> t1 == t2)
          s1 s2)
 
-let rec check_seq (c : context) (seq : wasm_instruction list)
-    (g : stack_of_stacks_type) : stack_of_stacks_type * context =
-  match seq with
-  | [] -> (g, c)
-  | i :: seq' ->
-      let g', c' = check_instr c i g in
-      check_seq c' seq' g'
-
-and check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
-    : stack_of_stacks_type * context =
+let rec check_instr ((g, c) : stack_of_stacks_type * context)
+    (i : wasm_instruction) : stack_of_stacks_type * context =
   match g with
   | (st, pc) :: g' -> (
       match i with
@@ -266,10 +258,10 @@ and check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
           else
             let st', st'' = split_at_index lft_in st in
             let g_, c' =
-              check_seq
-                { c with labels = bt_out :: c.labels }
+              List.fold_left check_instr
+                ( (st', pc) :: (st'', pc) :: g',
+                  { c with labels = bt_out :: c.labels } )
                 exps
-                ((st', pc) :: (st'', pc) :: g')
             in
             match g_ with
             | (st_, pc_) :: (st_', pc_') :: g_' ->
@@ -284,7 +276,7 @@ and check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
 let type_check_function (c : context) (f : wasm_func) =
   let c' = { c with locals = f.locals } in
   let g_init = [ ([], Public) ] in
-  let _ = check_seq c' f.body g_init in
+  let _ = List.fold_left check_instr (g_init, c') f.body in
   ()
 
 let type_check_module (m : wasm_module) =

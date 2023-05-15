@@ -380,8 +380,7 @@ let m_block =
             [
               WI_Const 42l;
               WI_Block
-                ( BlockType ([ { t = I32; lbl = Public } ], []),
-                  [ WI_Drop ] );
+                (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Drop ]);
             ];
           export_name = None;
         };
