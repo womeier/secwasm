@@ -6,6 +6,7 @@ type value_type = I32
 type labeled_value_type = { t : value_type; lbl : SimpleLattice.t }
 type stack_type = labeled_value_type list
 type fun_type = FunType of stack_type * SimpleLattice.t * stack_type
+type block_type = BlockType of stack_type * stack_type
 type binop = Add | Eq
 
 [@@@ocamlformat "disable"]
@@ -23,7 +24,7 @@ type wasm_instruction =
   | WI_Load of SimpleLattice.t                                        (* read memory at address *)
   | WI_Store of SimpleLattice.t                                       (* write memory at address *)
   | WI_If of fun_type * wasm_instruction list * wasm_instruction list (* if then else *)
-  | WI_Block of fun_type * wasm_instruction list                      (* block *)
+  | WI_Block of block_type * wasm_instruction list                    (* block *)
   | WI_Br of int32                                                    (* unconditional branch *)
   | WI_BrIf of int32                                                  (* conditional branch *)
   | WI_Nop
