@@ -156,11 +156,14 @@ let err_block2 i1 i2 =
 
 let err_block3 s1 s2 =
   TypingError
-    (Printf.sprintf "block needs values with types ⊑ %s on the stack (found %s)" (print_st s1) (print_st s2))
+    (Printf.sprintf "block needs values with types ⊑ %s on the stack (found %s)"
+       (print_st s1) (print_st s2))
 
 let err_block4 s1 s2 =
   TypingError
-    (Printf.sprintf "block must leave values with types ⊑ %s on the stack (found %s)" (print_st s1) (print_st s2))
+    (Printf.sprintf
+       "block must leave values with types ⊑ %s on the stack (found %s)"
+       (print_st s1) (print_st s2))
 
 (* ======= Type checking ======= *)
 

@@ -457,6 +457,68 @@ let m_block =
 
 let _ = ~+("block with simple param neg 2" >:: neg_test m_block (err_block2 1 0))
 
+let m_block_input_stack_incorrect =
+  let bt = BlockType ([ { t = I32; lbl = Public } ], []) in
+  let bexps = [ WI_Drop ] in
+  {
+    memories = [];
+    globals =
+      [
+        {
+          gtype = { t = I32; lbl = Secret };
+          const = [ WI_Const 42l ];
+          mut = false;
+        };
+      ];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body = [ WI_GlobalGet 0l; WI_Block (bt, bexps) ];
+          export_name = None;
+        };
+      ];
+  }
+
+let _ =
+  ~+("block input stack incorrectly typed"
+    >:: neg_test m_block_input_stack_incorrect
+          (err_block3
+             [ { t = I32; lbl = Public } ]
+             [ { t = I32; lbl = Secret } ]))
+
+let m_block_output_stack_incorrect =
+  let bt = BlockType ([], [ { t = I32; lbl = Public } ]) in
+  let bexps = [ WI_GlobalGet 0l ] in
+  {
+    memories = [];
+    globals =
+      [
+        {
+          gtype = { t = I32; lbl = Secret };
+          const = [ WI_Const 42l ];
+          mut = false;
+        };
+      ];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body = [ WI_Block (bt, bexps) ];
+          export_name = None;
+        };
+      ];
+  }
+
+let _ =
+  ~+("block input stack incorrectly typed"
+    >:: neg_test m_block_output_stack_incorrect
+          (err_block4
+             [ { t = I32; lbl = Public } ]
+             [ { t = I32; lbl = Secret } ]))
+
 (*  ================= End of tests ================== *)
 (*  Run suite! *)
 
