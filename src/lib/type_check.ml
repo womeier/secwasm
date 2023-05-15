@@ -258,16 +258,16 @@ and check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
                 ((st', pc) :: g', c)
             | _ -> raise err_store_addrexists)
       | WI_If _ -> raise (NotImplemented "if-then-else")
-      | WI_Block (FunType (ft_in, _, ft_out), exps) -> (
-          let lft_in = List.length ft_in in
-          let lft_out = List.length ft_out in
+      | WI_Block (BlockType (bt_in, bt_out), exps) -> (
+          let lft_in = List.length bt_in in
+          let lft_out = List.length bt_out in
           let lst = List.length st in
           if lft_in > lst then raise (err_block1 lft_in lst)
           else
             let st', st'' = split_at_index lft_in st in
             let g_, c' =
               check_seq
-                { c with labels = ft_out :: c.labels }
+                { c with labels = bt_out :: c.labels }
                 exps
                 ((st', pc) :: (st'', pc) :: g')
             in

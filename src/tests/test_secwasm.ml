@@ -312,7 +312,7 @@ let m_block =
         {
           ftype = FunType ([], Public, []);
           locals = [];
-          body = [ WI_Block (FunType ([], Public, []), [ WI_Nop ]) ];
+          body = [ WI_Block (BlockType ([], []), [ WI_Nop ]) ];
           export_name = None;
         };
       ];
@@ -345,8 +345,8 @@ let m_block =
           body =
             [
               WI_Block
-                ( FunType ([], Public, []),
-                  [ WI_Block (FunType ([], Public, []), [ WI_Nop ]) ] );
+                ( BlockType ([], []),
+                  [ WI_Block (BlockType ([], []), [ WI_Nop ]) ] );
             ];
           export_name = None;
         };
@@ -380,7 +380,7 @@ let m_block =
             [
               WI_Const 42l;
               WI_Block
-                ( FunType ([ { t = I32; lbl = Public } ], Public, []),
+                ( BlockType ([ { t = I32; lbl = Public } ], []),
                   [ WI_Drop ] );
             ];
           export_name = None;
@@ -413,7 +413,7 @@ let m_block =
           body =
             [
               WI_Block
-                (FunType ([ { t = I32; lbl = Public } ], Public, []), [ WI_Nop ]);
+                (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Nop ]);
             ];
           export_name = None;
         };
@@ -446,9 +446,8 @@ let m_block =
             [
               WI_Const 42l;
               WI_Block
-                ( FunType
+                ( BlockType
                     ( [ { t = I32; lbl = Public } ],
-                      Public,
                       [ { t = I32; lbl = Public } ] ),
                   [ WI_Drop ] );
             ];
