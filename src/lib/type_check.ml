@@ -234,7 +234,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           if c.memories == 0l then raise err_load_nomemory
           else
             match st with
-            | { t = addr; lbl = la } :: _ ->
+            | { t = addr; lbl = la } :: st ->
                 if addr != I32 then raise err_load_addr_i32;
                 (* l = l_a ⊔ l_m ⊔ pc *)
                 let lbl = la <> lm <> pc in
@@ -280,10 +280,12 @@ and type_check_block ((g, c) : stack_of_stacks_type * context)
       | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
 let type_check_function (c : context) (f : wasm_func) =
-  let c' = { c with locals = f.locals } in
+  let { ftype = FunType (_ft_in, _lbl, ft_out); locals; body; _ } = f in
+  let c' = { c with locals } in
   let g_init = [ ([], Public) ] in
-  let _ = List.fold_left check_instr (g_init, c') f.body in
-  ()
+  match type_check_block (g_init, c') (BlockType ([], ft_out), body) with
+  | [ (_st, _pc) ], _ -> ()
+  | _ -> raise (InternalError "function: stack-of-stacks ill-formed")
 
 let type_check_module (m : wasm_module) =
   let c =

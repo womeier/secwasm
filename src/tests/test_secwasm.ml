@@ -197,7 +197,7 @@ let m_local_get : wasm_module =
     functions =
       [
         {
-          ftype = FunType ([], Public, []);
+          ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
           locals = [ { t = I32; lbl = Public } ];
           body = [ WI_LocalGet 0l ];
           export_name = None;
@@ -253,7 +253,7 @@ let m_load =
     functions =
       [
         {
-          ftype = FunType ([], Public, []);
+          ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
           locals = [];
           body = [ WI_Const 0l; WI_Load Public ];
           export_name = None;
