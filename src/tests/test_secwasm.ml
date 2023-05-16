@@ -204,6 +204,87 @@ let _ =
     }
 
 (*
+  Set a public global variable
+
+  (module
+    (global (mut i32) (i32.const 0))
+    (func
+      i32.const 42
+      global.set 0
+    )
+  )
+*)
+let _ =
+  test "global.set" pos_test
+    {
+      memories = [];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Public };
+            const = [ WI_Const 0l ];
+            mut = true;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 42l; WI_GlobalSet 0l ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Forbidden explicit flow from secret global variable to public global variable
+
+  (module
+    (global i32 (i32.const 0))       ;; secret
+    (global (mut i32) (i32.const 0)) ;; public
+    (func
+      global.get 0
+      i32.const 1
+      i32.add
+      global.set 1
+    )
+  )
+*)
+let _ =
+  test "forbidden explicit flow (global vars)"
+    (neg_test
+       (PrivacyViolation
+          "global.set expected pc \226\138\148 l \226\138\145 l' but was \
+           pc=Public, l=Secret, l'=Public"))
+    {
+      memories = [];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 0l ];
+            mut = false;
+          };
+          {
+            gtype = { t = I32; lbl = Public };
+            const = [ WI_Const 0l ];
+            mut = true;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [ WI_GlobalGet 0l; WI_Const 1l; WI_BinOp Add; WI_GlobalSet 1l ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Set a public local variable
 
   (module
@@ -280,6 +361,52 @@ let _ =
             ftype = FunType ([], Public, []);
             locals = [];
             body = [ WI_Const 0l; WI_Const 42l; WI_Store Public ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Forbidden implicit flow via load from secret address
+
+  (module
+    (memory 3)
+    (global i32 (i32.const 0))       ;; secret
+    (global (mut i32) (i32.const 0)) ;; public
+    (func
+      global.get 0    ;; secret address
+      i32.load Public ;; value itself not secret
+      global.set 1
+    )
+  )
+*)
+let _ =
+  test "forbidden implicit flow via load from secret address"
+    (neg_test
+       (PrivacyViolation
+          "global.set expected pc \226\138\148 l \226\138\145 l' but was \
+           pc=Public, l=Secret, l'=Public"))
+    {
+      memories = [];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 0l ];
+            mut = false;
+          };
+          {
+            gtype = { t = I32; lbl = Public };
+            const = [ WI_Const 0l ];
+            mut = true;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_GlobalGet 0l; WI_Load Public; WI_GlobalSet 1l ];
             export_name = None;
           };
         ];
