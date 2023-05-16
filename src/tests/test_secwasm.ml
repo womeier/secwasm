@@ -11,12 +11,14 @@ let test_check_module (expect : res) (m : wasm_module) (_ : test_ctxt) =
   | Some e -> assert_raises e f
 
 let pos_test (m : wasm_module) = test_check_module None m
-let neg_test (m : wasm_module) (e : exn) = test_check_module (Some e) m
+let neg_test (e : exn) (m : wasm_module) = test_check_module (Some e) m
+let test_list : test list ref = ref []
+
+let test (name : string) (t : wasm_module -> test_ctxt -> unit)
+    (m : wasm_module) =
+  test_list := !test_list @ [ name >:: t m ]
 
 (* ======= Modules under test  ========= *)
-
-let test_list : test list ref = ref []
-let ( ~+ ) t = test_list := !test_list @ [ t ]
 
 (*
   Add two constants
@@ -30,22 +32,22 @@ let ( ~+ ) t = test_list := !test_list @ [ t ]
     )
   )
 *)
-let m_add_consts : wasm_module =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
-          locals = [];
-          body = [ WI_Const 1l; WI_Const 1l; WI_BinOp Add ];
-          export_name = None;
-        };
-      ];
-  }
 
-let _ = ~+("add consts" >:: pos_test m_add_consts)
+let _ =
+  test "add consts" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Const 1l; WI_Const 1l; WI_BinOp Add ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Add is missing an operand
@@ -58,22 +60,21 @@ let _ = ~+("add consts" >:: pos_test m_add_consts)
     )
   )
 *)
-let m_add_consts2 : wasm_module =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
-          locals = [];
-          body = [ WI_Const 1l; WI_BinOp Add ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("add consts 2" >:: neg_test m_add_consts2 err_binop)
+let _ =
+  test "add consts 2" (neg_test err_binop)
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Const 1l; WI_BinOp Add ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Nop is well-typed
@@ -84,22 +85,21 @@ let _ = ~+("add consts 2" >:: neg_test m_add_consts2 err_binop)
     )
   )
 *)
-let m_nop : wasm_module =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [ { t = I32; lbl = Public } ];
-          body = [ WI_Nop ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("nop" >:: pos_test m_nop)
+let _ =
+  test "nop" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [ { t = I32; lbl = Public } ];
+            body = [ WI_Nop ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Unreachable is well-typed
@@ -110,22 +110,21 @@ let _ = ~+("nop" >:: pos_test m_nop)
     )
   )
 *)
-let m_unreachable : wasm_module =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [];
-          body = [ WI_Unreachable ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("unreachable" >:: pos_test m_unreachable)
+let _ =
+  test "unreachable" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Unreachable ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Push a constant, drop it again
@@ -137,22 +136,21 @@ let _ = ~+("unreachable" >:: pos_test m_unreachable)
     )
   )
 *)
-let m_drop : wasm_module =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [ { t = I32; lbl = Public } ];
-          body = [ WI_Const 42l; WI_Drop ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("drop" >:: pos_test m_drop)
+let _ =
+  test "drop" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [ { t = I32; lbl = Public } ];
+            body = [ WI_Const 42l; WI_Drop ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Nothing to drop
@@ -163,22 +161,21 @@ let _ = ~+("drop" >:: pos_test m_drop)
     )
   )
 *)
-let m_drop : wasm_module =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [ { t = I32; lbl = Public } ];
-          body = [ WI_Drop ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("drop 2" >:: neg_test m_drop err_drop)
+let _ =
+  test "drop 2" (neg_test err_drop)
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [ { t = I32; lbl = Public } ];
+            body = [ WI_Drop ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Get a public local variable
@@ -190,22 +187,21 @@ let _ = ~+("drop 2" >:: neg_test m_drop err_drop)
     )
   )
 *)
-let m_local_get : wasm_module =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [ { t = I32; lbl = Public } ];
-          body = [ WI_LocalGet 0l ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("local.get" >:: pos_test m_local_get)
+let _ =
+  test "local.get" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [ { t = I32; lbl = Public } ];
+            body = [ WI_LocalGet 0l ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Set a public local variable
@@ -218,22 +214,21 @@ let _ = ~+("local.get" >:: pos_test m_local_get)
     )
   )
 *)
-let m_local_set =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [ { t = I32; lbl = Public } ];
-          body = [ WI_Const 42l; WI_LocalSet 0l ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("local.set" >:: pos_test m_local_set)
+let _ =
+  test "local.set" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [ { t = I32; lbl = Public } ];
+            body = [ WI_Const 42l; WI_LocalSet 0l ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Load from memory
@@ -246,22 +241,21 @@ let _ = ~+("local.set" >:: pos_test m_local_set)
     )
   )
 *)
-let m_load =
-  {
-    memories = [ { min_size = 1l; max_size = None } ];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [];
-          body = [ WI_Const 0l; WI_Load Public ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("load" >:: pos_test m_load)
+let _ =
+  test "load" pos_test
+    {
+      memories = [ { min_size = 1l; max_size = None } ];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 0l; WI_Load Public ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Store to memory
@@ -275,22 +269,21 @@ let _ = ~+("load" >:: pos_test m_load)
     )
   )
 *)
-let m_store =
-  {
-    memories = [ { min_size = 1l; max_size = None } ];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [];
-          body = [ WI_Const 0l; WI_Const 42l; WI_Store Public ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("store" >:: pos_test m_store)
+let _ =
+  test "store" pos_test
+    {
+      memories = [ { min_size = 1l; max_size = None } ];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 0l; WI_Const 42l; WI_Store Public ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Simple block
@@ -303,22 +296,21 @@ let _ = ~+("store" >:: pos_test m_store)
     )
   )
 *)
-let m_block =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [];
-          body = [ WI_Block (BlockType ([], []), [ WI_Nop ]) ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("block 1" >:: pos_test m_block)
+let _ =
+  test "block 1" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Block (BlockType ([], []), [ WI_Nop ]) ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Simple nested block
@@ -333,27 +325,26 @@ let _ = ~+("block 1" >:: pos_test m_block)
     )
   )
 *)
-let m_block =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [];
-          body =
-            [
-              WI_Block
-                ( BlockType ([], []),
-                  [ WI_Block (BlockType ([], []), [ WI_Nop ]) ] );
-            ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("nested block" >:: pos_test m_block)
+let _ =
+  test "nested block" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], []),
+                    [ WI_Block (BlockType ([], []), [ WI_Nop ]) ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Block with simple params
@@ -367,28 +358,26 @@ let _ = ~+("nested block" >:: pos_test m_block)
     )
   )
 *)
-let m_block =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [];
-          body =
-            [
-              WI_Const 42l;
-              WI_Block
-                ( BlockType ([ { t = I32; lbl = Public } ], []),
-                  [ WI_Drop ] );
-            ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("block with simple param" >:: pos_test m_block)
+let _ =
+  test "block with simple param" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [
+                WI_Const 42l;
+                WI_Block
+                  (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Drop ]);
+              ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Block with simple params is ill-typed since stack is empty
@@ -401,26 +390,26 @@ let _ = ~+("block with simple param" >:: pos_test m_block)
     )
   )
 *)
-let m_block =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [];
-          body =
-            [
-              WI_Block
-                (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Nop ]);
-            ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("block with simple param neg 1" >:: neg_test m_block (err_block1 1 0))
+let _ =
+  test "block with simple param"
+    (neg_test (err_block1 1 0))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [
+                WI_Block
+                  (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Nop ]);
+              ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*
   Block with simple params is ill-typed since stack is empty
@@ -433,30 +422,30 @@ let _ = ~+("block with simple param neg 1" >:: neg_test m_block (err_block1 1 0)
     )
   )
 *)
-let m_block =
-  {
-    memories = [];
-    globals = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, []);
-          locals = [];
-          body =
-            [
-              WI_Const 42l;
-              WI_Block
-                ( BlockType
-                    ( [ { t = I32; lbl = Public } ],
-                      [ { t = I32; lbl = Public } ] ),
-                  [ WI_Drop ] );
-            ];
-          export_name = None;
-        };
-      ];
-  }
-
-let _ = ~+("block with simple param neg 2" >:: neg_test m_block (err_block2 1 0))
+let _ =
+  test "block with simple param 2"
+    (neg_test (err_block2 1 0))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [
+                WI_Const 42l;
+                WI_Block
+                  ( BlockType
+                      ( [ { t = I32; lbl = Public } ],
+                        [ { t = I32; lbl = Public } ] ),
+                    [ WI_Drop ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
 
 (*  ================= End of tests ================== *)
 (*  Run suite! *)
