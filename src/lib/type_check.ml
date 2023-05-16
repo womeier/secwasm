@@ -166,16 +166,14 @@ let err_block4 s1 s2 =
        (print_st s1) (print_st s2))
 
 let err_function1 i1 i2 =
-TypingError
-  (Printf.sprintf
-      "function must leave %d value on the stack (found %d)" i1 i2)
+  TypingError
+    (Printf.sprintf "function must leave %d value on the stack (found %d)" i1 i2)
 
 let err_function2 s1 s2 =
   TypingError
     (Printf.sprintf
-        "function must leave values with types ⊑ %s on the stack (found %s)" (print_st s1) (print_st s2))
-
-
+       "function must leave values with types ⊑ %s on the stack (found %s)"
+       (print_st s1) (print_st s2))
 
 (* ======= Type checking ======= *)
 
@@ -281,9 +279,10 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
       | WI_BrIf _ -> raise (NotImplemented "br_if"))
   | _ -> raise (InternalError "stack-of-stacks ill-formed")
 
-and check_seq ((g, c) : stack_of_stacks_type * context) (seq : wasm_instruction list) = 
-                  List.fold_left check_instr (g, c) seq
-                  
+and check_seq ((g, c) : stack_of_stacks_type * context)
+    (seq : wasm_instruction list) =
+  List.fold_left check_instr (g, c) seq
+
 and type_check_block ((g, c) : stack_of_stacks_type * context)
     ((BlockType (bt_in, bt_out), instrs) : block_type * wasm_instruction list) =
   match g with
