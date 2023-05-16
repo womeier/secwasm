@@ -165,6 +165,18 @@ let err_block4 s1 s2 =
        "block must leave values with types ⊑ %s on the stack (found %s)"
        (print_st s1) (print_st s2))
 
+let err_function1 i1 i2 =
+TypingError
+  (Printf.sprintf
+      "function must leave %d value on the stack (found %d)" i1 i2)
+
+let err_function2 s1 s2 =
+  TypingError
+    (Printf.sprintf
+        "function must leave values with types ⊑ %s on the stack (found %s)" (print_st s1) (print_st s2))
+
+
+
 (* ======= Type checking ======= *)
 
 let lookup_global (c : context) (idx : int32) =
@@ -299,10 +311,10 @@ let type_check_function (c : context) (f : wasm_func) =
   let g_init = [ ([], Public) ] in
   match check_seq (g_init, c') body with
   | [ (st, _pc) ], _ ->
-      let ft_out_len = List.length ft_out in
-      let st_len = List.length st in
-      if not (ft_out_len = st_len) then failwith "TODO: Err msg";
-      if not (leq_stack st ft_out) then failwith "TODO: Err msg"
+      let lft_out = List.length ft_out in
+      let lst = List.length st in
+      if not (lft_out == lst) then raise (err_function1 lft_out lst);
+      if not (leq_stack st ft_out) then raise (err_function2 ft_out st)
   | _ -> raise (InternalError "function: stack-of-stacks ill-formed")
 
 let type_check_module (m : wasm_module) =
