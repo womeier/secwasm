@@ -269,6 +269,9 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
       | WI_BrIf _ -> raise (NotImplemented "br_if"))
   | _ -> raise (InternalError "stack-of-stacks ill-formed")
 
+and check_seq ((g, c) : stack_of_stacks_type * context) (seq : wasm_instruction list) = 
+                  List.fold_left check_instr (g, c) seq
+                  
 and type_check_block ((g, c) : stack_of_stacks_type * context)
     ((BlockType (bt_in, bt_out), instrs) : block_type * wasm_instruction list) =
   match g with
@@ -282,7 +285,7 @@ and type_check_block ((g, c) : stack_of_stacks_type * context)
       let t1, st = split_at_index bt_in_len st in
       if not (leq_stack t1 bt_in) then raise (err_block3 bt_in t1);
       let g_ = (t1, pc) :: (st, pc) :: g in
-      match List.fold_left check_instr (g_, c') instrs with
+      match check_seq (g_, c') instrs with
       | (t2, _pc') :: (st', pc'') :: g', _ ->
           let t2_len = List.length t2 in
           if bt_out_len > t2_len then raise (err_block2 bt_out_len t2_len);
@@ -294,7 +297,7 @@ let type_check_function (c : context) (f : wasm_func) =
   let { ftype = FunType (_ft_in, _lbl, ft_out); locals; body; _ } = f in
   let c' = { c with locals } in
   let g_init = [ ([], Public) ] in
-  match List.fold_left check_instr (g_init, c') body with
+  match check_seq (g_init, c') body with
   | [ (st, _pc) ], _ ->
       let ft_out_len = List.length ft_out in
       let st_len = List.length st in
