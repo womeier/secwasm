@@ -1,5 +1,8 @@
 (library
- (name secwasm))
+ (name secwasm)
+ (libraries)
+ (instrumentation
+  (backend bisect_ppx)))
 
 (env
  (dev

@@ -1,3 +1,5 @@
+[@@@coverage exclude_file]
+
 module List = struct
   let rec take n xs =
     match (n, xs) with

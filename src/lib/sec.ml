@@ -1,3 +1,5 @@
+[@@@coverage exclude_file]
+
 module type LATTICE = sig
   type t
 
