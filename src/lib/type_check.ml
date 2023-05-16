@@ -278,19 +278,19 @@ and type_check_block ((g, c) : stack_of_stacks_type * context)
   | [] -> raise (InternalError "blocks: stack-of-stacks ill-formed")
   | (st, pc) :: g -> (
       let c' = { c with labels = bt_in :: c.labels } in
-      let bt_in_len = List.length bt_in in
-      let bt_out_len = List.length bt_out in
-      let st_len = List.length st in
-      if bt_in_len > st_len then raise (err_block1 bt_in_len st_len);
-      let t1, st = split_at_index bt_in_len st in
-      if not (leq_stack t1 bt_in) then raise (err_block3 bt_in t1);
-      let g_ = (t1, pc) :: (st, pc) :: g in
+      let lft_in = List.length bt_in in
+      let lft_out = List.length bt_out in
+      let lst = List.length st in
+      if lft_in > lst then raise (err_block1 lft_in lst);
+      let st', st'' = split_at_index lft_in st in
+      if not (leq_stack st' bt_in) then raise (err_block3 bt_in st');
+      let g_ = (st', pc) :: (st'', pc) :: g in
       match check_seq (g_, c') instrs with
-      | (t2, _pc') :: (st', pc'') :: g', _ ->
-          let t2_len = List.length t2 in
-          if bt_out_len > t2_len then raise (err_block2 bt_out_len t2_len);
-          if not (leq_stack t2 bt_out) then raise (err_block4 bt_out t2);
-          ((t2 @ st', pc <> pc'') :: g', c)
+      | (st_, _pc) :: (st_', pc_') :: g_', _ ->
+          let lst_ = List.length st_ in
+          if lst_ < lft_out then raise (err_block2 lft_out lst_);
+          if not (leq_stack st_ bt_out) then raise (err_block4 bt_out st_);
+          ((st_ @ st_', pc <> pc_') :: g_', c)
       | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
 let type_check_function (c : context) (f : wasm_func) =
