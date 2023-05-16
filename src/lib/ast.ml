@@ -1,5 +1,7 @@
 open Sec
 
+[@@@coverage exclude_file]
+
 type value_type = I32
 
 let str (t : value_type) = match t with I32 -> "I32"

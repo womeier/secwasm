@@ -6,6 +6,6 @@
 
 (package
  (name secwasm)
- (depends ocaml dune))
+ (depends ocaml dune bisect_ppx))
 
 ; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
