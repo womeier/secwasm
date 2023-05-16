@@ -66,7 +66,7 @@ let fail_st st = failwith (print_st st)
 (* ======= Notation ============= *)
 
 let ( <> ) v1 v2 = SimpleLattice.lub v1 v2
-let ( <= ) v1 v2 = SimpleLattice.leq v1 v2
+let ( <<= ) v1 v2 = SimpleLattice.leq v1 v2
 
 (* ======= Error handling ======= *)
 
@@ -194,8 +194,10 @@ let check_stack s1 s2 =
          (fun { t = t1; lbl = _lbl1 } { t = t2; lbl = _lbl2 } -> t1 == t2)
          s1 s2)
 
-let leq_ty { t = t1; lbl = l1 } { t = t2; lbl = l2 } = t1 == t2 && l1 <= l2
-let leq_stack s1 s2 = List.for_all2 leq_ty s1 s2
+let leq_ty { t = t1; lbl = l1 } { t = t2; lbl = l2 } = t1 == t2 && l1 <<= l2
+
+let leq_stack (s1 : labeled_value_type list) (s2 : labeled_value_type list) =
+  List.for_all2 leq_ty s1 s2
 
 let rec check_instr ((g, c) : stack_of_stacks_type * context)
     (i : wasm_instruction) : stack_of_stacks_type * context =
@@ -230,7 +232,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               let { t = dst; lbl = l' } = lookup_local c idx in
               (* Check that types are equal and pc ⊔ l ⊑ l' *)
               if not (src == dst) then raise (err_localset1 src dst)
-              else if not (l <> pc <= l') then raise (err_localset2 pc l l');
+              else if not (l <> pc <<= l') then raise (err_localset2 pc l l');
               ((st', pc) :: g', c)
           | _ -> raise err_localset3)
       | WI_GlobalGet idx ->
@@ -248,7 +250,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               (* Check that types are equal, var is mutable and pc ⊔ l ⊑ l' *)
               if not (src == dst) then raise (err_globalset1 src dst);
               if not mut then raise err_globalset_imut;
-              if not (l <> pc <= l') then raise (err_globalset2 pc l l');
+              if not (l <> pc <<= l') then raise (err_globalset2 pc l l');
               ((st', pc) :: g', c)
           | _ -> raise err_globalset3)
       | WI_Load lm -> (
@@ -269,7 +271,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
                 (* Check that addr and val are I32 and pc ⊔ l_a ⊔ l_v ⊑ l_m *)
                 if taddr != I32 then raise err_store_addr_i32;
                 if tval != I32 then raise err_store_val_i32
-                else if not (pc <> la <> lv <= lm) then
+                else if not (pc <> la <> lv <<= lm) then
                   raise (err_store2 pc la lv lm);
                 ((st', pc) :: g', c)
             | _ -> raise err_store_addrexists)
@@ -312,8 +314,10 @@ let type_check_function (c : context) (f : wasm_func) =
   | [ (st, _pc) ], _ ->
       let lft_out = List.length ft_out in
       let lst = List.length st in
-      if not (lft_out == lst) then raise (err_function1 lft_out lst);
-      if not (leq_stack st ft_out) then raise (err_function2 ft_out st)
+      if not (lft_out <= lst) then raise (err_function1 lft_out lst)
+      else
+        let st', _ = split_at_index lft_out st in
+        if not (leq_stack st' ft_out) then raise (err_function2 ft_out st)
   | _ -> raise (InternalError "function: stack-of-stacks ill-formed")
 
 let type_check_module (m : wasm_module) =
