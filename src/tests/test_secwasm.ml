@@ -249,7 +249,7 @@ let _ =
       functions =
         [
           {
-            ftype = FunType ([], Public, []);
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
             locals = [];
             body = [ WI_Const 0l; WI_Load Public ];
             export_name = None;
@@ -442,6 +442,153 @@ let _ =
                         [ { t = I32; lbl = Public } ] ),
                     [ WI_Drop ] );
               ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Block input stack has higher security level than block params security level
+
+  (module
+    (global i32<Secret> (i32.const 42))
+    (func
+      global.get 0
+      (block i32<Public> -> ϵ
+        drop
+      end)
+    )
+  )
+*)
+let _ =
+  test "block input stack incorrect security level"
+    (neg_test
+       (err_block3 [ { t = I32; lbl = Public } ] [ { t = I32; lbl = Secret } ]))
+    {
+      memories = [];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 42l ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [
+                WI_GlobalGet 0l;
+                WI_Block
+                  (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Drop ]);
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Block output stack has higher security level than block result security level
+
+  (module
+    (global i32<Secret> (i32.const 42))
+    (func
+      (block ϵ -> i32<Public>
+        global.get 0
+      end)
+    )
+  )
+*)
+let _ =
+  test "block output stack incorrect security level"
+    (neg_test
+       (err_block4 [ { t = I32; lbl = Public } ] [ { t = I32; lbl = Secret } ]))
+    {
+      memories = [];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 42l ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_GlobalGet 0l ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Function output stack has different length than specified by function type
+
+  (module
+    (func (result i32<Public>)
+      nop
+    )
+  )
+*)
+let _ =
+  test "function output stack incorrect length"
+    (neg_test (err_function1 1 0))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Nop ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Function output stack has higher security level than result security level
+
+  (module
+    (func (result i32<Public>)
+      nop
+    )
+  )
+*)
+let _ =
+  test "function output stack incorrect security level"
+    (neg_test
+       (err_function2
+          [ { t = I32; lbl = Public } ]
+          [ { t = I32; lbl = Secret } ]))
+    {
+      memories = [];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 42l ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_GlobalGet 0l ];
             export_name = None;
           };
         ];

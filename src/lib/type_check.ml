@@ -66,7 +66,7 @@ let fail_st st = failwith (print_st st)
 (* ======= Notation ============= *)
 
 let ( <> ) v1 v2 = SimpleLattice.lub v1 v2
-let ( <= ) v1 v2 = SimpleLattice.leq v1 v2
+let ( <<= ) v1 v2 = SimpleLattice.leq v1 v2
 
 (* ======= Error handling ======= *)
 
@@ -154,6 +154,27 @@ let err_block2 i1 i2 =
   TypingError
     (Printf.sprintf "block must leave %d values on the stack (found %d)" i1 i2)
 
+let err_block3 s1 s2 =
+  TypingError
+    (Printf.sprintf "block needs values with types ⊑ %s on the stack (found %s)"
+       (print_st s1) (print_st s2))
+
+let err_block4 s1 s2 =
+  TypingError
+    (Printf.sprintf
+       "block must leave values with types ⊑ %s on the stack (found %s)"
+       (print_st s1) (print_st s2))
+
+let err_function1 i1 i2 =
+  TypingError
+    (Printf.sprintf "function must leave %d value on the stack (found %d)" i1 i2)
+
+let err_function2 s1 s2 =
+  TypingError
+    (Printf.sprintf
+       "function must leave values with types ⊑ %s on the stack (found %s)"
+       (print_st s1) (print_st s2))
+
 (* ======= Type checking ======= *)
 
 let lookup_global (c : context) (idx : int32) =
@@ -173,16 +194,13 @@ let check_stack s1 s2 =
          (fun { t = t1; lbl = _lbl1 } { t = t2; lbl = _lbl2 } -> t1 == t2)
          s1 s2)
 
-let rec check_seq (c : context) (seq : wasm_instruction list)
-    (g : stack_of_stacks_type) : stack_of_stacks_type * context =
-  match seq with
-  | [] -> (g, c)
-  | i :: seq' ->
-      let g', c' = check_instr c i g in
-      check_seq c' seq' g'
+let leq_ty { t = t1; lbl = l1 } { t = t2; lbl = l2 } = t1 == t2 && l1 <<= l2
 
-and check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
-    : stack_of_stacks_type * context =
+let leq_stack (s1 : labeled_value_type list) (s2 : labeled_value_type list) =
+  List.for_all2 leq_ty s1 s2
+
+let rec check_instr ((g, c) : stack_of_stacks_type * context)
+    (i : wasm_instruction) : stack_of_stacks_type * context =
   match g with
   | (st, pc) :: g' -> (
       match i with
@@ -214,7 +232,7 @@ and check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
               let { t = dst; lbl = l' } = lookup_local c idx in
               (* Check that types are equal and pc ⊔ l ⊑ l' *)
               if not (src == dst) then raise (err_localset1 src dst)
-              else if not (l <> pc <= l') then raise (err_localset2 pc l l');
+              else if not (l <> pc <<= l') then raise (err_localset2 pc l l');
               ((st', pc) :: g', c)
           | _ -> raise err_localset3)
       | WI_GlobalGet idx ->
@@ -232,14 +250,14 @@ and check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
               (* Check that types are equal, var is mutable and pc ⊔ l ⊑ l' *)
               if not (src == dst) then raise (err_globalset1 src dst);
               if not mut then raise err_globalset_imut;
-              if not (l <> pc <= l') then raise (err_globalset2 pc l l');
+              if not (l <> pc <<= l') then raise (err_globalset2 pc l l');
               ((st', pc) :: g', c)
           | _ -> raise err_globalset3)
       | WI_Load lm -> (
           if c.memories == 0l then raise err_load_nomemory
           else
             match st with
-            | { t = addr; lbl = la } :: _ ->
+            | { t = addr; lbl = la } :: st ->
                 if addr != I32 then raise err_load_addr_i32;
                 (* l = l_a ⊔ l_m ⊔ pc *)
                 let lbl = la <> lm <> pc in
@@ -253,39 +271,54 @@ and check_instr (c : context) (i : wasm_instruction) (g : stack_of_stacks_type)
                 (* Check that addr and val are I32 and pc ⊔ l_a ⊔ l_v ⊑ l_m *)
                 if taddr != I32 then raise err_store_addr_i32;
                 if tval != I32 then raise err_store_val_i32
-                else if not (pc <> la <> lv <= lm) then
+                else if not (pc <> la <> lv <<= lm) then
                   raise (err_store2 pc la lv lm);
                 ((st', pc) :: g', c)
             | _ -> raise err_store_addrexists)
       | WI_If _ -> raise (NotImplemented "if-then-else")
-      | WI_Block (BlockType (bt_in, bt_out), exps) -> (
-          let lft_in = List.length bt_in in
-          let lft_out = List.length bt_out in
-          let lst = List.length st in
-          if lft_in > lst then raise (err_block1 lft_in lst)
-          else
-            let st', st'' = split_at_index lft_in st in
-            let g_, c' =
-              check_seq
-                { c with labels = bt_out :: c.labels }
-                exps
-                ((st', pc) :: (st'', pc) :: g')
-            in
-            match g_ with
-            | (st_, pc_) :: (st_', pc_') :: g_' ->
-                let lst_ = List.length st_ in
-                if lst_ < lft_out then raise (err_block2 lft_out lst_)
-                else ((st_ @ st_', pc_ <> pc_') :: g_', c')
-            | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
+      | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps)
       | WI_Br _ -> raise (NotImplemented "br")
       | WI_BrIf _ -> raise (NotImplemented "br_if"))
   | _ -> raise (InternalError "stack-of-stacks ill-formed")
 
+and check_seq ((g, c) : stack_of_stacks_type * context)
+    (seq : wasm_instruction list) =
+  List.fold_left check_instr (g, c) seq
+
+and type_check_block ((g, c) : stack_of_stacks_type * context)
+    ((BlockType (bt_in, bt_out), instrs) : block_type * wasm_instruction list) =
+  match g with
+  | [] -> raise (InternalError "blocks: stack-of-stacks ill-formed")
+  | (st, pc) :: g -> (
+      let c' = { c with labels = bt_in :: c.labels } in
+      let lft_in = List.length bt_in in
+      let lft_out = List.length bt_out in
+      let lst = List.length st in
+      if lft_in > lst then raise (err_block1 lft_in lst);
+      let st', st'' = split_at_index lft_in st in
+      if not (leq_stack st' bt_in) then raise (err_block3 bt_in st');
+      let g_ = (st', pc) :: (st'', pc) :: g in
+      match check_seq (g_, c') instrs with
+      | (st_, _pc) :: (st_', pc_') :: g_', _ ->
+          let lst_ = List.length st_ in
+          if lst_ < lft_out then raise (err_block2 lft_out lst_);
+          if not (leq_stack st_ bt_out) then raise (err_block4 bt_out st_);
+          ((st_ @ st_', pc <> pc_') :: g_', c)
+      | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
+
 let type_check_function (c : context) (f : wasm_func) =
-  let c' = { c with locals = f.locals } in
+  let { ftype = FunType (_ft_in, _lbl, ft_out); locals; body; _ } = f in
+  let c' = { c with locals } in
   let g_init = [ ([], Public) ] in
-  let _ = check_seq c' f.body g_init in
-  ()
+  match check_seq (g_init, c') body with
+  | [ (st, _pc) ], _ ->
+      let lft_out = List.length ft_out in
+      let lst = List.length st in
+      if not (lft_out <= lst) then raise (err_function1 lft_out lst)
+      else
+        let st', _ = split_at_index lft_out st in
+        if not (leq_stack st' ft_out) then raise (err_function2 ft_out st)
+  | _ -> raise (InternalError "function: stack-of-stacks ill-formed")
 
 let type_check_module (m : wasm_module) =
   let c =
