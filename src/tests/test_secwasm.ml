@@ -204,6 +204,32 @@ let _ =
     }
 
 (*
+  Get non-existing local variable
+
+  (module
+    (func
+      local.get 0
+    )
+  )
+*)
+let _ =
+  test "local.get non-existing local"
+    (neg_test (TypingError "expected local variable of index 0"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_LocalGet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Set a public global variable
 
   (module
@@ -261,6 +287,33 @@ let _ =
             mut = false;
           };
         ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 42; WI_GlobalSet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Set a non-existing public global variable
+
+  (module
+    (func
+      i32.const 42
+      global.set 0
+    )
+  )
+*)
+let _ =
+  test "set non-existing global var"
+    (neg_test (TypingError "expected global variable of index 0"))
+    {
+      memories = [];
+      globals = [];
       functions =
         [
           {

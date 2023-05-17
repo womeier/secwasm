@@ -99,7 +99,6 @@ let p_err4 msg l1 l2 l3 l4 =
 
 let err_drop = TypingError "drop expected 1 value on the stack"
 let err_binop = TypingError "binop expected 2 values on the stack"
-let err_localget = TypingError "local.get lookup out of bounds"
 
 let err_globalset2 l1 l2 l3 =
   PrivacyViolation
@@ -161,11 +160,11 @@ let err_function2 s1 s2 =
 
 let lookup_global (c : context) (idx : int) =
   if idx < List.length c.globals then List.nth c.globals idx
-  else failwith ("expected global variable of index " ^ Int.to_string idx)
+  else t_err0 ("expected global variable of index " ^ Int.to_string idx)
 
 let lookup_local (c : context) (idx : int) =
   if idx < List.length c.locals then List.nth c.locals idx
-  else failwith ("expected local variable of index " ^ Int.to_string idx)
+  else t_err0 ("expected local variable of index " ^ Int.to_string idx)
 
 let check_stack s1 s2 =
   assert (
@@ -201,11 +200,9 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               (({ t = v1.t; lbl = lbl3 } :: st', pc) :: g', c)
           | _ -> raise err_binop)
       | WI_Call _ -> raise (NotImplemented "call")
-      | WI_LocalGet idx -> (
-          try
-            let { t; lbl } = lookup_local c idx in
-            (({ t; lbl = pc <> lbl } :: st, pc) :: g', c)
-          with _ -> raise err_localget)
+      | WI_LocalGet idx ->
+          let { t; lbl } = lookup_local c idx in
+          (({ t; lbl = pc <> lbl } :: st, pc) :: g', c)
       | WI_LocalSet idx -> (
           match st with
           | { t = _; lbl = l } :: st' ->
