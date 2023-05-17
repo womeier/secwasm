@@ -338,6 +338,60 @@ let _ =
     }
 
 (*
+  Load no memory present
+
+  (module
+    (func
+      i32.const 0
+      i32.load
+    )
+  )
+*)
+let _ =
+  test "load no memory present "
+    (neg_test (TypingError "load expected memory in the context"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Const 0; WI_Load Public ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Store no memory present
+
+  (module
+    (func
+      i32.const 0
+      i32.load
+    )
+  )
+*)
+let _ =
+  test "store no memory present "
+    (neg_test (TypingError "store expected memory in the context"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 0; WI_Const 0; WI_Store Public ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Store to memory
 
   (module
