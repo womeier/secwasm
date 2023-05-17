@@ -238,6 +238,41 @@ let _ =
     }
 
 (*
+  Set a non-mut public global variable
+
+  (module
+    (global i32 (i32.const 0))
+    (func
+      i32.const 42
+      global.set 0
+    )
+  )
+*)
+let _ =
+  test "set non-mut global var"
+    (neg_test (TypingError "global.set expected global var to be mutable"))
+    {
+      memories = [];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Public };
+            const = [ WI_Const 0 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 42; WI_GlobalSet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Forbidden explicit flow from secret global variable to public global variable
 
   (module
