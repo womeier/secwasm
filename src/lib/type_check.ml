@@ -290,7 +290,7 @@ and type_check_block ((g, c) : stack_of_stacks_type * context)
   match g with
   | [] -> raise (InternalError "blocks: stack-of-stacks ill-formed")
   | (st, pc) :: g -> (
-      let c' = { c with labels = bt_in :: c.labels } in
+      let c' = { c with labels = bt_out :: c.labels } in
       if List.length bt_in > List.length st then
         raise (err_block1 (List.length bt_in) (List.length st));
       let st', st'' = split_at_index (List.length bt_in) st in
