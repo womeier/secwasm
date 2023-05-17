@@ -8,7 +8,7 @@ open Ast
 open Sec
 
 type context = {
-  memories : int32; (* number of memories *)
+  memories : int; (* number of memories *)
   funcs : fun_type list;
   globals : wasm_global list;
   locals : labeled_value_type list;
@@ -18,7 +18,7 @@ type context = {
 
 let empty_context =
   {
-    memories = 0l;
+    memories = 0;
     funcs = [];
     globals = [];
     locals = [];
@@ -177,15 +177,13 @@ let err_function2 s1 s2 =
 
 (* ======= Type checking ======= *)
 
-let lookup_global (c : context) (idx : int32) =
-  if Int32.to_int idx < List.length c.globals then
-    List.nth c.globals (Int32.to_int idx)
-  else failwith ("expected global variable of index " ^ Int32.to_string idx)
+let lookup_global (c : context) (idx : int) =
+  if idx < List.length c.globals then List.nth c.globals idx
+  else failwith ("expected global variable of index " ^ Int.to_string idx)
 
-let lookup_local (c : context) (idx : int32) =
-  if Int32.to_int idx < List.length c.locals then
-    List.nth c.locals (Int32.to_int idx)
-  else failwith ("expected local variable of index " ^ Int32.to_string idx)
+let lookup_local (c : context) (idx : int) =
+  if idx < List.length c.locals then List.nth c.locals idx
+  else failwith ("expected local variable of index " ^ Int.to_string idx)
 
 let check_stack s1 s2 =
   assert (
@@ -254,7 +252,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               ((st', pc) :: g', c)
           | _ -> raise err_globalset3)
       | WI_Load lm -> (
-          if c.memories == 0l then raise err_load_nomemory
+          if c.memories == 0 then raise err_load_nomemory
           else
             match st with
             | { t = addr; lbl = la } :: st ->
@@ -264,7 +262,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
                 (({ t = I32; lbl } :: st, pc) :: g', c)
             | _ -> raise err_load_addrexists)
       | WI_Store lm -> (
-          if c.memories == 0l then raise err_store_nomemory
+          if c.memories == 0 then raise err_store_nomemory
           else
             match st with
             | { t = tval; lbl = lv } :: { t = taddr; lbl = la } :: st' ->
@@ -323,7 +321,7 @@ let type_check_module (m : wasm_module) =
     {
       empty_context with
       globals = m.globals;
-      memories = Int32.of_int (List.length m.memories);
+      memories = List.length m.memories;
     }
   in
   let _ = List.map (type_check_function c) m.functions in
