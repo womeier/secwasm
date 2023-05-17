@@ -508,6 +508,46 @@ let _ =
     }
 
 (*
+  Forbidden store
+
+  (module
+    (memory 1)
+    (global i32<Secret>)
+    (func
+      i32.const 0
+      global.get 0
+      i32.store
+    )
+  )
+*)
+let _ =
+  test "forbidden store dataflow"
+    (neg_test
+       (PrivacyViolation
+          "store expected pc \226\138\148 la \226\138\148 lv \226\138\145 lm \
+           but was pc=Public, la=Public, lv=Secret, lm=Public"))
+    {
+      memories = [ { min_size = 1; max_size = None } ];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 0 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 0; WI_GlobalGet 0; WI_Store Public ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Forbidden implicit flow via load from secret address
 
   (module
