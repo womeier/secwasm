@@ -281,9 +281,9 @@ and type_check_block ((g, c) : stack_of_stacks_type * context)
       | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
 let type_check_function (c : context) (f : wasm_func) =
-  let { ftype = FunType (_ft_in, _lbl, ft_out); locals; body; _ } = f in
+  let { ftype = FunType (_ft_in, l, ft_out); locals; body; _ } = f in
   let c' = { c with locals } in
-  let g_init = [ ([], Public) ] in
+  let g_init = [ ([], l) ] in
   match check_seq (g_init, c') body with
   | [ (st, _pc) ], _ ->
       if List.length ft_out != List.length st then
