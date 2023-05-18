@@ -1231,6 +1231,7 @@ let _ =
 
 (*
   Test func can get its arguments using local.get
+  
   (module
     (func
     (param i32) (result i32)
