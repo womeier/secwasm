@@ -247,7 +247,6 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
                   raise (err_store2 pc la lv lm);
                 ((st', pc) :: g', c)
             | _ -> raise err_store_addrexists)
-      | WI_If _ -> raise (NotImplemented "if-then-else")
       | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps)
       | WI_Br _ -> raise (NotImplemented "br")
       | WI_BrIf _ -> raise (NotImplemented "br_if"))
