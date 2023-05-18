@@ -9,7 +9,7 @@ open Sec
 
 type context = {
   memories : int; (* number of memories *)
-  funcs : fun_type list;
+  func_types : fun_type list;
   globals : wasm_global list;
   locals : labeled_value_type list;
   labels : labeled_value_type list list;
@@ -19,7 +19,7 @@ type context = {
 let empty_context =
   {
     memories = 0;
-    funcs = [];
+    func_types = [];
     globals = [];
     locals = [];
     labels = [];
@@ -181,7 +181,7 @@ let lookup_local (c : context) (idx : int) =
   else t_err0 ("expected local variable of index " ^ Int.to_string idx)
 
 let lookup_func_type (c : context) (idx : int) =
-  if idx < List.length c.funcs then List.nth c.funcs idx
+  if idx < List.length c.func_types then List.nth c.func_types idx
   else t_err0 ("expected function of index " ^ Int.to_string idx)
 
 let check_stack s1 s2 =
@@ -329,7 +329,7 @@ let type_check_module (m : wasm_module) =
       empty_context with
       globals = m.globals;
       memories = List.length m.memories;
-      funcs = List.map (fun f -> f.ftype) m.functions;
+      func_types = List.map (fun f -> f.ftype) m.functions;
     }
   in
   let _ = List.map (type_check_function c) m.functions in
