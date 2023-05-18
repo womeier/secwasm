@@ -508,7 +508,7 @@ let _ =
     }
 
 (*
-  Forbidden store
+  Storing secret value in public memory is forbidden
 
   (module
     (memory 1)
@@ -516,16 +516,16 @@ let _ =
     (func
       i32.const 0
       global.get 0
-      i32.store
+      i32.store Public
     )
   )
 *)
 let _ =
-  test "forbidden store dataflow"
+  test "store secret value in public memory"
     (neg_test
        (PrivacyViolation
-          "store expected pc \226\138\148 la \226\138\148 lv \226\138\145 lm \
-           but was pc=Public, la=Public, lv=Secret, lm=Public"))
+          "store expected pc ⊔ la ⊔ lv ⊑ lm but was pc=Public, la=Public, \
+           lv=Secret, lm=Public"))
     {
       memories = [ { min_size = 1; max_size = None } ];
       globals =
