@@ -261,20 +261,24 @@ and type_check_block ((g, c) : stack_of_stacks_type * context)
     ((BlockType (bt_in, bt_out), instrs) : block_type * wasm_instruction list) =
   match g with
   | [] -> raise (InternalError "blocks: stack-of-stacks ill-formed")
-  | (st, pc) :: g -> (
+  | (stack, pc) :: g -> (
       let c' = { c with labels = bt_out :: c.labels } in
-      if List.length bt_in > List.length st then
-        raise (err_block1 (List.length bt_in) (List.length st));
-      let st', st'' = split_at_index (List.length bt_in) st in
-      if not (leq_stack st' bt_in) then raise (err_block3 bt_in st');
-      let g_ = (st', pc) :: (st'', pc) :: g in
-      match check_seq (g_, c') instrs with
-      | (st_, _pc) :: (st_', pc_') :: g_', _ ->
-          let lst_ = List.length st_ in
-          if lst_ < List.length bt_out then
-            raise (err_block2 (List.length bt_out) lst_);
-          if not (leq_stack st_ bt_out) then raise (err_block4 bt_out st_);
-          ((st_ @ st_', pc <> pc_') :: g_', c)
+      if List.length bt_in > List.length stack then
+        raise (err_block1 (List.length bt_in) (List.length stack));
+      (* naming: bt_in and bt_out refer to tau1 and tau2 that are annotated
+         tau1 refers to the type actually found, tau2 to the type that is computed based on the actual inputs
+      *)
+      let tau1, st = split_at_index (List.length bt_in) stack in
+      (* actual input types <= labeled input types *)
+      if not (leq_stack tau1 bt_in) then raise (err_block3 bt_in tau1);
+      (* check expression with updated stack, context *)
+      match check_seq ((tau1, pc) :: (st, pc) :: g, c') instrs with
+      (* computed pc' is discarded *)
+      | (tau2, _) :: (st', pc'') :: g', _ ->
+          if List.length tau2 < List.length bt_out then
+            raise (err_block2 (List.length bt_out) (List.length tau2));
+          if not (leq_stack tau2 bt_out) then raise (err_block4 bt_out tau2);
+          ((tau2 @ st', pc <> pc'') :: g', c)
       | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
 let type_check_function (c : context) (f : wasm_func) =
