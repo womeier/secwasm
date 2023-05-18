@@ -184,6 +184,7 @@ let _ =
     (func
       (local i32)
       local.get 0
+      drop
     )
   )
 *)
@@ -197,7 +198,7 @@ let _ =
           {
             ftype = FunType ([], Public, []);
             locals = [ { t = I32; lbl = Public } ];
-            body = [ WI_LocalGet 0 ];
+            body = [ WI_LocalGet 0; WI_Drop ];
             export_name = None;
           };
         ];
@@ -209,6 +210,7 @@ let _ =
   (module
     (func
       local.get 0
+      drop
     )
   )
 *)
@@ -897,6 +899,58 @@ let _ =
             ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
             locals = [];
             body = [ WI_GlobalGet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Function body doesn't correspond to function type (too few return values)
+
+  (module
+    (func (result i32)
+      nop
+    )
+  )
+*)
+let _ =
+  test "function body has incorrect type (too few return values)"
+    (neg_test (TypingError "function must leave 1 value on the stack (found 0)"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Nop ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Function body doesn't correspond to function type (too many return values)
+
+  (module
+    (func
+      i32.const 0
+    )
+  )
+*)
+let _ =
+  test "function body has incorrect type (too many return values)"
+    (neg_test (TypingError "function must leave 0 value on the stack (found 1)"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 0 ];
             export_name = None;
           };
         ];

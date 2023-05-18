@@ -275,7 +275,7 @@ and type_check_block ((g, c) : stack_of_stacks_type * context)
       match check_seq ((tau1, pc) :: (st, pc) :: g, c') instrs with
       (* computed pc' is discarded *)
       | (tau2, _) :: (st', pc'') :: g', _ ->
-          if List.length tau2 < List.length bt_out then
+          if List.length tau2 != List.length bt_out then
             raise (err_block2 (List.length bt_out) (List.length tau2));
           if not (leq_stack tau2 bt_out) then raise (err_block4 bt_out tau2);
           ((bt_out @ st', pc <> pc'') :: g', c)
@@ -287,7 +287,7 @@ let type_check_function (c : context) (f : wasm_func) =
   let g_init = [ ([], Public) ] in
   match check_seq (g_init, c') body with
   | [ (st, _pc) ], _ ->
-      if not (List.length ft_out <= List.length st) then
+      if List.length ft_out != List.length st then
         raise (err_function1 (List.length ft_out) (List.length st))
       else
         let st', _ = split_at_index (List.length ft_out) st in
