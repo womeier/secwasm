@@ -220,16 +220,6 @@ let leq_gamma (g1 : stack_of_stacks_type) (g2 : stack_of_stacks_type) =
   same_lengths g1 g2
   && List.for_all2 (fun (st1, _) (st2, _) -> leq_stack st1 st2) g1 g2
 
-let prefix_split s1 s2 =
-  let rec prefix_helper acc s1 s2 =
-    match (s1, s2) with
-    | [], _ -> Some (acc, s2)
-    | _, [] -> None
-    | v1 :: s1', v2 :: s2' ->
-        if v1.t == v2.t then prefix_helper (v1 :: acc) s1' s2' else None
-  in
-  prefix_helper [] s1 s2
-
 let lift_st lbl_lift_to st =
   let lift_st_helper ({ lbl; _ } as v) acc =
     { v with lbl = lbl_lift_to <> lbl } :: acc
@@ -330,7 +320,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               | _ -> raise err_store_addrexists))
       | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps)
       | WI_Br i -> (
-          (* Find the label (expected top of stack) that we're branching to *)
+          (* Find the return type of the block that we're branching to *)
           let bt_out = lookup_label c i in
           (* Check that the top of the stack matches *)
           let st, st' = split_at_index (List.length bt_out) st in
