@@ -157,16 +157,22 @@ let err_function2 s1 s2 =
        (print_st s1) (print_st s2))
 
 let err_branch_prefix s1 s2 =
-  TypingError 
-  (Printf.sprintf "branching expected %s to be a prefix of the stack (%s)" (print_st s1) (print_st s2))
-
-let err_branch_stack_security_level l s = 
   TypingError
-  (Printf.sprintf "branching expected security level of all values on stack %s to be greater than %s" (print_st s) (str_l l))
+    (Printf.sprintf "branching expected %s to be a prefix of the stack (%s)"
+       (print_st s1) (print_st s2))
+
+let err_branch_stack_security_level l s =
+  TypingError
+    (Printf.sprintf
+       "branching expected security level of all values on stack %s to be \
+        greater than %s"
+       (print_st s) (str_l l))
 
 let err_gamma_subtype g1 g2 =
   TypingError
-  (Printf.sprintf "expected gamma %s to have lower security level than gamma' %s" (print_g g1) (print_g g2))
+    (Printf.sprintf
+       "expected gamma %s to have lower security level than gamma' %s"
+       (print_g g1) (print_g g2))
 
 (* ======= Type checking ======= *)
 
@@ -178,7 +184,7 @@ let lookup_local (c : context) (idx : int) =
   if idx < List.length c.locals then List.nth c.locals idx
   else t_err0 ("expected local variable of index " ^ Int.to_string idx)
 
-let lookup_label (c : context) (idx : int) = 
+let lookup_label (c : context) (idx : int) =
   if idx < List.length c.labels then List.nth c.labels idx
   else failwith ("expected label of index " ^ Int.to_string idx)
 
@@ -189,43 +195,37 @@ let check_stack s1 s2 =
          (fun { t = t1; lbl = _lbl1 } { t = t2; lbl = _lbl2 } -> t1 == t2)
          s1 s2)
 
-let same_lengths l1 l2 = 
-  List.compare_lengths l1 l2 == 0
-
+let same_lengths l1 l2 = List.compare_lengths l1 l2 == 0
 let leq_ty { t = t1; lbl = l1 } { t = t2; lbl = l2 } = t1 == t2 && l1 <<= l2
 
 let leq_stack (s1 : labeled_value_type list) (s2 : labeled_value_type list) =
   same_lengths s1 s2 && List.for_all2 leq_ty s1 s2
 
-let leq_gamma (g1 : stack_of_stacks_type) (g2 : stack_of_stacks_type) = 
-  same_lengths g1 g2 
+let leq_gamma (g1 : stack_of_stacks_type) (g2 : stack_of_stacks_type) =
+  same_lengths g1 g2
   && List.for_all2 (fun (st1, _) (st2, _) -> leq_stack st1 st2) g1 g2
 
-let prefix_split s1 s2 = 
-  let rec prefix_helper acc s1 s2 = 
+let prefix_split s1 s2 =
+  let rec prefix_helper acc s1 s2 =
     match (s1, s2) with
-    | [], _ -> Some (acc, s2) 
+    | [], _ -> Some (acc, s2)
     | _, [] -> None
-    | v1 :: s1', v2 :: s2' -> 
-      if v1.t == v2.t then 
-        prefix_helper (v1 :: acc) s1' s2' 
-      else 
-        None
-  in 
-  prefix_helper [] s1 s2 
+    | v1 :: s1', v2 :: s2' ->
+        if v1.t == v2.t then prefix_helper (v1 :: acc) s1' s2' else None
+  in
+  prefix_helper [] s1 s2
 
 let lift_st lbl_lift_to st =
-  let lift_st_helper ({lbl; _} as v) acc = 
-    let new_lbl = if lbl <<= lbl_lift_to then lbl_lift_to else lbl in 
-    {v with lbl = new_lbl} :: acc
+  let lift_st_helper ({ lbl; _ } as v) acc =
+    { v with lbl = lbl_lift_to <> lbl } :: acc
   in
   List.fold_right lift_st_helper st []
 
-let lift_g lbl_lift_to g = 
+let lift_g lbl_lift_to g =
   let lift_gamma_helper (st, pc) acc =
-    let new_pc = if pc <<= lbl_lift_to then lbl_lift_to else pc in 
-    (lift_st lbl_lift_to st, new_pc) :: acc
-  in List.fold_right lift_gamma_helper g []
+    (lift_st lbl_lift_to st, lbl_lift_to <> pc) :: acc
+  in
+  List.fold_right lift_gamma_helper g []
 
 let lift (lbl_lift_to : SimpleLattice.t) (g : stack_of_stacks_type) =
   lift_g lbl_lift_to g
@@ -301,31 +301,20 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
             | _ -> raise err_store_addrexists)
       | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps)
       | WI_Br i -> (
-        (* Find the label (expected top of stack) that we're branching to *)
-        let jump_label = lookup_label c i in
-        (* Check that the top of the stack matches *)
-        match prefix_split jump_label st with
-        | None -> raise (err_branch_prefix jump_label st)
-        | Some (st, st') -> 
+          (* Find the label (expected top of stack) that we're branching to *)
+          let bt_out = lookup_label c i in
+          (* Check that the top of the stack matches *)
+          let (st, st') = split_at_index (List.length bt_out) st in 
+          if not (leq_stack st bt_out) then raise (err_branch_prefix bt_out st);
           (* Check that pc ⊑ st *)
-          if not (List.for_all (fun v -> pc <<= v.lbl) st) then raise (err_branch_stack_security_level pc st);
-          (* Note: What is gamma'? 
-             For now, assume that the rule gamma ⊑ gamma' is there for subtyping purposes
-             and assume that gamma' = gamma 
-             The below let bindings are just for clarity; can be removed *)
-          let gamma = g' in 
-          let gamma' = gamma in 
-          (* g1 = gamma'[0 : i - 1], g2 = gamma'[i :] *)
-          let g1, g2 = split_at_index (i - 1) gamma' in
-          (* TODO: What should be lifted? (Typing rule somewhat unclear)
-             For now assume that st'' = st :: st' and pc' = pc *)
-          (* Perform lift_pc((st'', pc) :: gamma[0 : i - 1]) *)
-          match lift pc ((st @ st', pc) :: g1) with 
-          | [] -> raise (InternalError "stack-of-stacks ill-formed")
-          | (st'', pc') :: g1' ->
-            let gamma'' = g1' @ g2 in
-            ((st'', pc') :: gamma'', c))
-
+          if not (List.for_all (fun v -> pc <<= v.lbl) st) then
+            raise (err_branch_stack_security_level pc st);
+          (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
+          let g1, g2 = split_at_index (i - 1) g' in
+          match lift pc ((st @ st', pc) :: g1) with
+              | [] -> raise (InternalError "stack-of-stacks ill-formed")
+              | (st'', pc') :: g1' ->
+                ((st'', pc') :: g1' @ g2, c))
       | WI_BrIf _ -> raise (NotImplemented "br_if"))
   | _ -> raise (InternalError "stack-of-stacks ill-formed")
 
