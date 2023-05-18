@@ -278,7 +278,7 @@ and type_check_block ((g, c) : stack_of_stacks_type * context)
           if List.length tau2 < List.length bt_out then
             raise (err_block2 (List.length bt_out) (List.length tau2));
           if not (leq_stack tau2 bt_out) then raise (err_block4 bt_out tau2);
-          ((tau2 @ st', pc <> pc'') :: g', c)
+          ((bt_out @ st', pc <> pc'') :: g', c)
       | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
 let type_check_function (c : context) (f : wasm_func) =
