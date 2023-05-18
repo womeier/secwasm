@@ -17,7 +17,7 @@ type wasm_instruction =
   | WI_Unreachable                                                    (* trap unconditionally *)
   | WI_Drop                                                           (* drop value *)
   | WI_Const of int                                                   (* constant *)
-  | WI_BinOp of binop                                                 (* binary numeric operator *)
+  | WI_BinOp of binop                                                 (* binary numeric operator, deviates a bit from spec *)
   | WI_Call of int                                                    (* call function *)
   | WI_LocalGet of int                                                (* read local variable *)
   | WI_LocalSet of int                                                (* write local variable *)
@@ -25,7 +25,6 @@ type wasm_instruction =
   | WI_GlobalSet of int                                               (* write global variable *)
   | WI_Load of SimpleLattice.t                                        (* read memory at address *)
   | WI_Store of SimpleLattice.t                                       (* write memory at address *)
-  | WI_If of fun_type * wasm_instruction list * wasm_instruction list (* if then else *)
   | WI_Block of block_type * wasm_instruction list                    (* block *)
   | WI_Br of int                                                      (* unconditional branch *)
   | WI_BrIf of int                                                    (* conditional branch *)
@@ -90,12 +89,6 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_GlobalSet idx -> "global.set " ^ Int.to_string idx
   | WI_Load _ -> "i32.load"
   | WI_Store _ -> "i32.store"
-  | WI_If (_, b1, b2) ->
-      "if" ^ nl
-      ^ pp_instructions (indent + 2) b1
-      ^ nl ^ spaces indent ^ "else" ^ nl
-      ^ pp_instructions (indent + 2) b2
-      ^ nl ^ spaces indent ^ "end" ^ nl
   | WI_Block (_, b) -> "(block " ^ nl ^ pp_instructions (indent + 2) b
   | WI_Br idx -> "br " ^ Int.to_string idx
   | WI_BrIf idx -> "br_if " ^ Int.to_string idx
