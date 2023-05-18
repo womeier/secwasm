@@ -180,7 +180,7 @@ let lookup_local (c : context) (idx : int) =
   if idx < List.length c.locals then List.nth c.locals idx
   else t_err0 ("expected local variable of index " ^ Int.to_string idx)
 
-let lookup_function (c : context) (idx : int) =
+let lookup_func_type (c : context) (idx : int) =
   if idx < List.length c.funcs then List.nth c.funcs idx
   else t_err0 ("expected function of index " ^ Int.to_string idx)
 
@@ -218,17 +218,18 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               (({ t = v1.t; lbl = lbl3 } :: st', pc) :: g', c)
           | _ -> raise err_binop)
       | WI_Call idx -> (
-          match lookup_function c idx with
+          match lookup_func_type c idx with
           | FunType (ft_in, lbl, ft_out) ->
               (* Check if entering function is allowed *)
               if not (pc <<= lbl) then raise (err_call1 lbl pc);
               (* Check enough arguments *)
               if List.length ft_in > List.length st then
                 raise (err_call2 (List.length ft_in) (List.length st));
-              let tau1, st = split_at_index (List.length ft_in) st in
+              (* st' corresponds to st in the paper *)
+              let tau1, st' = split_at_index (List.length ft_in) st in
               (* actual input argument types <= labeled input types *)
               if not (leq_stack tau1 ft_in) then raise (err_call3 ft_in tau1);
-              ((ft_out @ st, pc) :: g', c))
+              ((ft_out @ st', pc) :: g', c))
       | WI_LocalGet idx ->
           let { t; lbl } = lookup_local c idx in
           (({ t; lbl = pc <> lbl } :: st, pc) :: g', c)
