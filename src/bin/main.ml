@@ -22,10 +22,12 @@ let example1_module : wasm_module =
               WI_BinOp Add;
               WI_Const 0;
               WI_BinOp Eq;
-              WI_If
-                ( FunType ([], Public, []),
-                  [ WI_Nop; WI_Const 2; WI_LocalSet 0 ],
-                  [ WI_Const 42; WI_LocalSet 0 ] );
+              WI_LocalSet 0
+              (* WI_If
+                     ( FunType ([], Public, []),
+                       [ WI_Nop; WI_Const 2; WI_LocalSet 0 ],
+                       [ WI_Const 42; WI_LocalSet 0 ] );
+                 ]; *);
             ];
           export_name = Some "hello";
         };
