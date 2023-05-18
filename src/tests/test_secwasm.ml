@@ -956,6 +956,45 @@ let _ =
         ];
     }
 
+(*
+  Test block typechecks
+
+  (func (export "foo")
+  (param i32) (result i32)
+      local.get 0
+      block (param i32) (result i32)
+        nop
+      end
+  )
+*)
+let _ =
+  test "block-1" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [ { t = I32; lbl = Public } ];
+            body =
+              [
+                WI_LocalGet 0;
+                WI_Block
+                  ( BlockType
+                      ( [ { t = I32; lbl = Public } ],
+                        [ { t = I32; lbl = Public } ] ),
+                    [ WI_Nop ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
 (*  ================= End of tests ================== *)
 (*  Run suite! *)
 
