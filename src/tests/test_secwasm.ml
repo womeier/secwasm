@@ -1064,6 +1064,35 @@ let _ =
     }
 
 (*
+   Test func can get its arguments using local.get
+   (module
+     (func
+     (param i32) (result i32)
+       local.get 0
+     )
+   )
+*)
+let _ =
+  test "func can get it's argument using local.get" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body = [ WI_LocalGet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Test branch to end of current block
 
   (module
