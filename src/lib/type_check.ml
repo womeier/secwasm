@@ -49,13 +49,13 @@ let rec print_g (g : stack_of_stacks_type) =
   match g with
   | [] -> "[]"
   | (st, pc) :: g' ->
-      Printf.sprintf "(%s, %s) :: %s" (print_st st) (pp_label pc) (print_g g')
+      Printf.sprintf "(%s, %s) :: %s" (print_st st) (str_l pc) (print_g g')
 
 and print_st (st : stack_type) =
   match st with
   | [] -> "[]"
   | { t; lbl } :: st' ->
-      Printf.sprintf "{%s, %s} :: %s" (pp_type t) (pp_label lbl) (print_st st')
+      Printf.sprintf "{%s, %s} :: %s" (pp_type t) (str_l lbl) (print_st st')
 
 let fail_g g = failwith (print_g g)
 let fail_st st = failwith (print_st st)
@@ -71,9 +71,6 @@ exception NotImplemented of string
 exception InternalError of string
 exception TypingError of string
 exception PrivacyViolation of string
-
-let str_l (l : SimpleLattice.t) =
-  match l with Public -> "Public" | Secret -> "Secret"
 
 let t_err0 msg = raise (TypingError msg)
 
