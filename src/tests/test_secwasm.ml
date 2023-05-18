@@ -1009,7 +1009,7 @@ let _ =
 
 let _ =
   test "type mismatch at end of block"
-    (neg_test (TypingError "bar"))
+    (neg_test (TypingError "block must leave 0 values on the stack (found 1)"))
     {
       memories = [];
       globals = [];
@@ -1026,10 +1026,7 @@ let _ =
               [
                 WI_LocalGet 0;
                 WI_Block
-                  ( BlockType
-                      ( [ { t = I32; lbl = Public } ],
-                        [ { t = I32; lbl = Public } ] ),
-                    [ WI_Nop ] );
+                  (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Nop ]);
               ];
             export_name = None;
           };
