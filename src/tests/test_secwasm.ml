@@ -1196,6 +1196,7 @@ let _ =
         ];
     }
 
+
 (*
   Test func can get its arguments using local.get
 
@@ -1206,6 +1207,7 @@ let _ =
     )
   )
 *)
+
 let _ =
   test "func can get it's argument using local.get" pos_test
     {
@@ -1221,6 +1223,125 @@ let _ =
                   [ { t = I32; lbl = Public } ] );
             locals = [];
             body = [ WI_LocalGet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+
+(*
+  Test branch to end of current block
+
+  (module
+    (func
+    (param i32) (result i32)
+      block
+        br 0
+      end
+      i32.const 32
+    )
+  )
+*)
+let _ =
+  test "branch to end of current block" pos_test
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body = [ WI_Block (BlockType ([], []), [ WI_Br 0 ]); WI_Const 42 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test branch to the end of nested block typechecks
+
+  (module
+    (func
+    (param i32) (result i32)
+      block (result i32)
+        block
+          br 0
+        end
+        i32.const 42
+      end
+    )
+  )
+*)
+
+let _ =
+  test "br-2" pos_test
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_Block (BlockType ([], []), [ WI_Br 0 ]); WI_Const 42 ]
+                  );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test type mismatch in br, expected [i32] but got []
+
+  (module
+    (func
+    (param i32) (result i32)
+      block (result i32)
+        block
+          br 1
+        end
+        i32.const 42
+      end
+    )
+  )
+*)
+
+let _ =
+  test "type mismatch in br"
+    (neg_test (TypingError "type mismatch in br, expected [i32] but got []"))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_Block (BlockType ([], []), [ WI_Br 1 ]); WI_Const 42 ]
+                  );
+              ];
             export_name = None;
           };
         ];
