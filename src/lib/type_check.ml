@@ -146,6 +146,20 @@ let err_block4 s1 s2 =
        "block must leave values with types ⊑ %s on the stack (found %s)"
        (print_st s1) (print_st s2))
 
+let err_call1 l1 l2 =
+  TypingError
+    (Printf.sprintf "can't call function labeled as %s (pc: %s)" (str_l l1)
+       (str_l l2))
+
+let err_call2 i1 i2 =
+  TypingError
+    (Printf.sprintf "call needs %d values on the stack (found %d)" i1 i2)
+
+let err_call3 s1 s2 =
+  TypingError
+    (Printf.sprintf "call needs values with types ⊑ %s on the stack (found %s)"
+       (print_st s1) (print_st s2))
+
 let err_function1 i1 i2 =
   TypingError
     (Printf.sprintf "function must leave %d value on the stack (found %d)" i1 i2)
@@ -165,6 +179,10 @@ let lookup_global (c : context) (idx : int) =
 let lookup_local (c : context) (idx : int) =
   if idx < List.length c.locals then List.nth c.locals idx
   else t_err0 ("expected local variable of index " ^ Int.to_string idx)
+
+let lookup_function (c : context) (idx : int) =
+  if idx < List.length c.funcs then List.nth c.funcs idx
+  else t_err0 ("expected function of index " ^ Int.to_string idx)
 
 let check_stack s1 s2 =
   assert (
@@ -199,7 +217,18 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               let lbl3 = v1.lbl <> v2.lbl <> pc in
               (({ t = v1.t; lbl = lbl3 } :: st', pc) :: g', c)
           | _ -> raise err_binop)
-      | WI_Call _ -> raise (NotImplemented "call")
+      | WI_Call idx -> (
+          match lookup_function c idx with
+          | FunType (ft_in, lbl, ft_out) ->
+              (* Check if entering function is allowed *)
+              if not (pc <<= lbl) then raise (err_call1 lbl pc);
+              (* Check enough arguments *)
+              if List.length ft_in > List.length st then
+                raise (err_call2 (List.length ft_in) (List.length st));
+              let tau1, st = split_at_index (List.length ft_in) st in
+              (* actual input argument types <= labeled input types *)
+              if not (leq_stack tau1 ft_in) then raise (err_call3 ft_in tau1);
+              ((ft_out @ st, pc) :: g', c))
       | WI_LocalGet idx ->
           let { t; lbl } = lookup_local c idx in
           (({ t; lbl = pc <> lbl } :: st, pc) :: g', c)
@@ -299,6 +328,7 @@ let type_check_module (m : wasm_module) =
       empty_context with
       globals = m.globals;
       memories = List.length m.memories;
+      funcs = List.map (fun f -> f.ftype) m.functions;
     }
   in
   let _ = List.map (type_check_function c) m.functions in
