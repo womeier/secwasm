@@ -1061,13 +1061,14 @@ let _ =
     }
 
 (*
-   Test func can get its arguments using local.get
-   (module
-     (func
-     (param i32) (result i32)
-       local.get 0
-     )
-   )
+  Test func can get its arguments using local.get
+
+  (module
+    (func
+    (param i32) (result i32)
+      local.get 0
+    )
+  )
 *)
 let _ =
   test "func can get it's argument using local.get" pos_test
