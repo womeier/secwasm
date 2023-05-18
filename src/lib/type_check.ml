@@ -304,7 +304,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           (* Find the label (expected top of stack) that we're branching to *)
           let bt_out = lookup_label c i in
           (* Check that the top of the stack matches *)
-          let (st, st') = split_at_index (List.length bt_out) st in 
+          let st, st' = split_at_index (List.length bt_out) st in
           if not (leq_stack st bt_out) then raise (err_branch_prefix bt_out st);
           (* Check that pc ⊑ st *)
           if not (List.for_all (fun v -> pc <<= v.lbl) st) then
@@ -312,9 +312,8 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
           let g1, g2 = split_at_index (i - 1) g' in
           match lift pc ((st @ st', pc) :: g1) with
-              | [] -> raise (InternalError "stack-of-stacks ill-formed")
-              | (st'', pc') :: g1' ->
-                ((st'', pc') :: g1' @ g2, c))
+          | [] -> raise (InternalError "stack-of-stacks ill-formed")
+          | (st'', pc') :: g1' -> (((st'', pc') :: g1') @ g2, c))
       | WI_BrIf _ -> raise (NotImplemented "br_if"))
   | _ -> raise (InternalError "stack-of-stacks ill-formed")
 
