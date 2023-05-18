@@ -13,7 +13,7 @@ test:
 
 coverage:
 	find . -name '*.coverage' | xargs rm -f
-	dune runtest --instrument-with bisect_ppx --force
+	-dune runtest --instrument-with bisect_ppx --force
 	@echo "======================"
 	bisect-ppx-report html
 	bisect-ppx-report summary
