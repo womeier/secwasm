@@ -956,6 +956,113 @@ let _ =
         ];
     }
 
+(*
+  Test block typechecks
+
+  (func
+  (param i32) (result i32)
+      local.get 0
+      block (param i32) (result i32)
+        nop
+      end
+  )
+*)
+let _ =
+  test "block-1" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [ { t = I32; lbl = Public } ];
+            body =
+              [
+                WI_LocalGet 0;
+                WI_Block
+                  ( BlockType
+                      ( [ { t = I32; lbl = Public } ],
+                        [ { t = I32; lbl = Public } ] ),
+                    [ WI_Nop ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test type mismatch at end of block, expected [] but got [i32]
+
+  (func
+  (param i32) (result i32)
+      local.get 0
+      block (param i32)
+        nop
+      end
+  )
+*)
+
+let _ =
+  test "type mismatch at end of block"
+    (neg_test (TypingError "bar"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [ { t = I32; lbl = Public } ];
+            body =
+              [
+                WI_LocalGet 0;
+                WI_Block
+                  ( BlockType
+                      ( [ { t = I32; lbl = Public } ],
+                        [ { t = I32; lbl = Public } ] ),
+                    [ WI_Nop ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test type mismatch at end of function, expected [] but got [i32, i32]
+
+  (func (result i32)
+      i32.const 1
+      i32.const 2
+      i32.const 3
+  )
+*)
+
+let _ =
+  test "type mismatch at end of function"
+    (neg_test (TypingError "function must leave 1 value on the stack (found 3)"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Const 1; WI_Const 2; WI_Const 3 ];
+            export_name = None;
+          };
+        ];
+    }
+
 (*  ================= End of tests ================== *)
 (*  Run suite! *)
 
