@@ -10,6 +10,8 @@ end
 type 'a lattice = (module LATTICE with type t = 'a)
 type simpleLatticeElement = Public | Secret
 
+let pp_label t = match t with Public -> "L" | Secret -> "H"
+
 module SimpleLattice : LATTICE with type t = simpleLatticeElement = struct
   type t = simpleLatticeElement
 

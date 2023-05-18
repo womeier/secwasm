@@ -204,6 +204,32 @@ let _ =
     }
 
 (*
+  Get non-existing local variable
+
+  (module
+    (func
+      local.get 0
+    )
+  )
+*)
+let _ =
+  test "local.get non-existing local"
+    (neg_test (TypingError "expected local variable of index 0"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_LocalGet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Set a public global variable
 
   (module
@@ -226,6 +252,68 @@ let _ =
             mut = true;
           };
         ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 42; WI_GlobalSet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Set a non-mut public global variable
+
+  (module
+    (global i32 (i32.const 0))
+    (func
+      i32.const 42
+      global.set 0
+    )
+  )
+*)
+let _ =
+  test "set non-mut global var"
+    (neg_test (TypingError "global.set expected global var to be mutable"))
+    {
+      memories = [];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Public };
+            const = [ WI_Const 0 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 42; WI_GlobalSet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Set a non-existing public global variable
+
+  (module
+    (func
+      i32.const 42
+      global.set 0
+    )
+  )
+*)
+let _ =
+  test "set non-existing global var"
+    (neg_test (TypingError "expected global variable of index 0"))
+    {
+      memories = [];
+      globals = [];
       functions =
         [
           {
@@ -414,6 +502,46 @@ let _ =
             ftype = FunType ([], Public, []);
             locals = [];
             body = [ WI_Const 0; WI_Const 42; WI_Store Public ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Forbidden store
+
+  (module
+    (memory 1)
+    (global i32<Secret>)
+    (func
+      i32.const 0
+      global.get 0
+      i32.store
+    )
+  )
+*)
+let _ =
+  test "forbidden store dataflow"
+    (neg_test
+       (PrivacyViolation
+          "store expected pc \226\138\148 la \226\138\148 lv \226\138\145 lm \
+           but was pc=Public, la=Public, lv=Secret, lm=Public"))
+    {
+      memories = [ { min_size = 1; max_size = None } ];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 0 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 0; WI_GlobalGet 0; WI_Store Public ];
             export_name = None;
           };
         ];

@@ -45,20 +45,17 @@ let split_at_index n l =
 
 (* ======== Debugging ============*)
 
-let str_l (l : pc_type) = match l with Public -> "L" | Secret -> "H"
-let str_t (t : value_type) = match t with I32 -> "I32"
-
 let rec print_g (g : stack_of_stacks_type) =
   match g with
   | [] -> "[]"
   | (st, pc) :: g' ->
-      Printf.sprintf "(%s, %s) :: %s" (print_st st) (str_l pc) (print_g g')
+      Printf.sprintf "(%s, %s) :: %s" (print_st st) (pp_label pc) (print_g g')
 
 and print_st (st : stack_type) =
   match st with
   | [] -> "[]"
   | { t; lbl } :: st' ->
-      Printf.sprintf "{%s, %s} :: %s" (str_t t) (str_l lbl) (print_st st')
+      Printf.sprintf "{%s, %s} :: %s" (pp_type t) (pp_label lbl) (print_st st')
 
 let fail_g g = failwith (print_g g)
 let fail_st st = failwith (print_st st)
@@ -75,15 +72,13 @@ exception InternalError of string
 exception TypingError of string
 exception PrivacyViolation of string
 
-let str_t (t : value_type) = match t with I32 -> "I32"
-
 let str_l (l : SimpleLattice.t) =
   match l with Public -> "Public" | Secret -> "Secret"
 
 let t_err0 msg = raise (TypingError msg)
 
 let t_err2 msg (t1 : value_type) (t2 : value_type) =
-  let error_msg = Printf.sprintf msg (str_t t1) (str_t t2) in
+  let error_msg = Printf.sprintf msg (pp_type t1) (pp_type t2) in
   raise (TypingError error_msg)
 
 let t_err2i msg (i1 : int) (i2 : int) =
@@ -104,12 +99,6 @@ let p_err4 msg l1 l2 l3 l4 =
 
 let err_drop = TypingError "drop expected 1 value on the stack"
 let err_binop = TypingError "binop expected 2 values on the stack"
-let err_localget = TypingError "local.get lookup out of bounds"
-
-let err_globalset1 t1 t2 =
-  TypingError
-    (Printf.sprintf "global.set src/ dst mismatch (src=%s, dst=%s)" (str_t t1)
-       (str_t t2))
 
 let err_globalset2 l1 l2 l3 =
   PrivacyViolation
@@ -121,11 +110,6 @@ let err_globalset3 = TypingError "global.set expected 1 value on the stack"
 let err_globalset_imut =
   TypingError "global.set expected global var to be mutable"
 
-let err_localset1 src dst =
-  TypingError
-    (Printf.sprintf "local.set src/ dst mismatch (src=%s, dst=%s)" (str_t src)
-       (str_t dst))
-
 let err_localset2 l1 l2 l3 =
   PrivacyViolation
     (Printf.sprintf "local.set expected pc ⊔ l ⊑ l' but was pc=%s, l=%s, l'=%s"
@@ -134,11 +118,8 @@ let err_localset2 l1 l2 l3 =
 let err_localset3 = TypingError "local.set expected 1 value on the stack"
 let err_load_nomemory = TypingError "load expected memory in the context"
 let err_load_addrexists = TypingError "load expected 1 value on the stack"
-let err_load_addr_i32 = TypingError "load address is expected to be a i32"
 let err_store_nomemory = TypingError "store expected memory in the context"
-let err_store_val_i32 = TypingError "store expected value of type i32 to store"
 let err_store_addrexists = TypingError "store expected 1 value on the stack"
-let err_store_addr_i32 = TypingError "store address is expected to be a i32"
 
 let err_store2 l1 l2 l3 l4 =
   PrivacyViolation
@@ -179,11 +160,11 @@ let err_function2 s1 s2 =
 
 let lookup_global (c : context) (idx : int) =
   if idx < List.length c.globals then List.nth c.globals idx
-  else failwith ("expected global variable of index " ^ Int.to_string idx)
+  else t_err0 ("expected global variable of index " ^ Int.to_string idx)
 
 let lookup_local (c : context) (idx : int) =
   if idx < List.length c.locals then List.nth c.locals idx
-  else failwith ("expected local variable of index " ^ Int.to_string idx)
+  else t_err0 ("expected local variable of index " ^ Int.to_string idx)
 
 let check_stack s1 s2 =
   assert (
@@ -219,18 +200,15 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               (({ t = v1.t; lbl = lbl3 } :: st', pc) :: g', c)
           | _ -> raise err_binop)
       | WI_Call _ -> raise (NotImplemented "call")
-      | WI_LocalGet idx -> (
-          try
-            let { t; lbl } = lookup_local c idx in
-            (({ t; lbl = pc <> lbl } :: st, pc) :: g', c)
-          with _ -> raise err_localget)
+      | WI_LocalGet idx ->
+          let { t; lbl } = lookup_local c idx in
+          (({ t; lbl = pc <> lbl } :: st, pc) :: g', c)
       | WI_LocalSet idx -> (
           match st with
-          | { t = src; lbl = l } :: st' ->
-              let { t = dst; lbl = l' } = lookup_local c idx in
-              (* Check that types are equal and pc ⊔ l ⊑ l' *)
-              if not (src == dst) then raise (err_localset1 src dst)
-              else if not (l <> pc <<= l') then raise (err_localset2 pc l l');
+          | { t = _; lbl = l } :: st' ->
+              let { t = _; lbl = l' } = lookup_local c idx in
+              (* Types are guaranteed to be I32, Check that pc ⊔ l ⊑ l' *)
+              if not (l <> pc <<= l') then raise (err_localset2 pc l l');
               ((st', pc) :: g', c)
           | _ -> raise err_localset3)
       | WI_GlobalGet idx ->
@@ -241,12 +219,11 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           (({ t = ty; lbl } :: st, pc) :: g', c)
       | WI_GlobalSet idx -> (
           match st with
-          | { t = src; lbl = l } :: st' ->
-              let { gtype = { t = dst; lbl = l' }; const = _; mut } =
+          | { t = _; lbl = l } :: st' ->
+              let { gtype = { t = _; lbl = l' }; const = _; mut } =
                 lookup_global c idx
               in
-              (* Check that types are equal, var is mutable and pc ⊔ l ⊑ l' *)
-              if not (src == dst) then raise (err_globalset1 src dst);
+              (* Type are guaranteed to be I32 thus equal, Check that var is mutable and pc ⊔ l ⊑ l' *)
               if not mut then raise err_globalset_imut;
               if not (l <> pc <<= l') then raise (err_globalset2 pc l l');
               ((st', pc) :: g', c)
@@ -255,8 +232,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           if c.memories == 0 then raise err_load_nomemory
           else
             match st with
-            | { t = addr; lbl = la } :: st ->
-                if addr != I32 then raise err_load_addr_i32;
+            | { t = _; lbl = la } :: st ->
                 (* l = l_a ⊔ l_m ⊔ pc *)
                 let lbl = la <> lm <> pc in
                 (({ t = I32; lbl } :: st, pc) :: g', c)
@@ -265,11 +241,9 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           if c.memories == 0 then raise err_store_nomemory
           else
             match st with
-            | { t = tval; lbl = lv } :: { t = taddr; lbl = la } :: st' ->
-                (* Check that addr and val are I32 and pc ⊔ l_a ⊔ l_v ⊑ l_m *)
-                if taddr != I32 then raise err_store_addr_i32;
-                if tval != I32 then raise err_store_val_i32
-                else if not (pc <> la <> lv <<= lm) then
+            | { t = _; lbl = lv } :: { t = _; lbl = la } :: st' ->
+                (* Addr and val are known to be I32, check that pc ⊔ l_a ⊔ l_v ⊑ l_m *)
+                if not (pc <> la <> lv <<= lm) then
                   raise (err_store2 pc la lv lm);
                 ((st', pc) :: g', c)
             | _ -> raise err_store_addrexists)
