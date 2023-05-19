@@ -1037,30 +1037,30 @@ let _ =
 
 (*
   Can't enter Secret function with Public pc
-  (func <Secret>
+  (func <Public>
      nop
   )
-  (func <Public>
+  (func <Secret>
       call 0
   )
 *)
 
 let _ =
-  test "can't enter Secret function with Public pc"
-    (neg_test (err_call1 Secret Public))
+  test "can't enter Public function with Secret pc"
+    (neg_test (err_call1 Public Secret))
     {
       memories = [];
       globals = [];
       functions =
         [
           {
-            ftype = FunType ([], Secret, []);
+            ftype = FunType ([], Public, []);
             locals = [];
             body = [ WI_Nop ];
             export_name = None;
           };
           {
-            ftype = FunType ([], Public, []);
+            ftype = FunType ([], Secret, []);
             locals = [];
             body = [ WI_Call 0 ];
             export_name = None;
