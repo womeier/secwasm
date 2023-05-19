@@ -216,7 +216,7 @@ let _ =
 *)
 let _ =
   test "local.get non-existing local"
-    (neg_test (TypingError "expected local variable of index 0"))
+    (neg_test (TypingError "did not find local variable of index 0"))
     {
       memories = [];
       globals = [];
@@ -312,7 +312,7 @@ let _ =
 *)
 let _ =
   test "set non-existing global var"
-    (neg_test (TypingError "expected global variable of index 0"))
+    (neg_test (TypingError "did not find global variable of index 0"))
     {
       memories = [];
       globals = [];
@@ -985,6 +985,30 @@ let _ =
             ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
             locals = [];
             body = [ WI_Call 0; WI_Const 1; WI_BinOp Add ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Call non-existing function
+  (func
+      call 5
+  )
+*)
+
+let _ =
+  test "call non-existing function"
+    (neg_test (TypingError "did not find function of index 5"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Call 5 ];
             export_name = None;
           };
         ];

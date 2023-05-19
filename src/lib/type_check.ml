@@ -170,16 +170,16 @@ let err_function2 s1 s2 =
 (* ======= Type checking ======= *)
 
 let lookup_global (c : context) (idx : int) =
-  if idx < List.length c.globals then List.nth c.globals idx
-  else t_err0 ("expected global variable of index " ^ Int.to_string idx)
+  if 0 <= idx && idx < List.length c.globals then List.nth c.globals idx
+  else t_err0 ("did not find global variable of index " ^ Int.to_string idx)
 
 let lookup_local (c : context) (idx : int) =
-  if idx < List.length c.locals then List.nth c.locals idx
-  else t_err0 ("expected local variable of index " ^ Int.to_string idx)
+  if 0 <= idx && idx < List.length c.locals then List.nth c.locals idx
+  else t_err0 ("did not find local variable of index " ^ Int.to_string idx)
 
 let lookup_func_type (c : context) (idx : int) =
-  if idx < List.length c.func_types then List.nth c.func_types idx
-  else t_err0 ("expected function of index " ^ Int.to_string idx)
+  if 0 <= idx && idx < List.length c.func_types then List.nth c.func_types idx
+  else t_err0 ("did not find function of index " ^ Int.to_string idx)
 
 let check_stack s1 s2 =
   assert (
