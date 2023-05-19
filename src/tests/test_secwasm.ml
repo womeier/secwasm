@@ -1009,7 +1009,7 @@ let _ =
 
 let _ =
   test "type mismatch at end of block"
-    (neg_test (TypingError "bar"))
+    (neg_test (TypingError "block must leave 0 values on the stack (found 1)"))
     {
       memories = [];
       globals = [];
@@ -1026,10 +1026,7 @@ let _ =
               [
                 WI_LocalGet 0;
                 WI_Block
-                  ( BlockType
-                      ( [ { t = I32; lbl = Public } ],
-                        [ { t = I32; lbl = Public } ] ),
-                    [ WI_Nop ] );
+                  (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Nop ]);
               ];
             export_name = None;
           };
@@ -1064,119 +1061,30 @@ let _ =
     }
 
 (*
-  Good function call
+  Test func can get its arguments using local.get
 
-  (func (result i32)
-      i32.const 0
-  )
-
-  (func (result i32)
-      call 0
-      i32.const 1
-      i32.add
+  (module
+    (func
+    (param i32) (result i32)
+      local.get 0
+    )
   )
 *)
-
 let _ =
-  test "good function call" pos_test
+  test "func can get it's argument using local.get" pos_test
     {
       memories = [];
       globals = [];
       functions =
         [
           {
-            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
             locals = [];
-            body = [ WI_Const 0 ];
-            export_name = None;
-          };
-          {
-            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
-            locals = [];
-            body = [ WI_Call 0; WI_Const 1; WI_BinOp Add ];
-            export_name = None;
-          };
-        ];
-    }
-
-(*
-  Can't enter function due to Secret parameter flowing to Public arg
-
-  (global i32<Secret> (i32.const 0))
-
-  (func <Public> (param i32<Public>)
-      nop
-  )
-
-  (func <Public>
-      global.get ;; loads secret parameter for call
-      call 0
-  )
-*)
-
-let _ =
-  test "can't enter function due to Secret parameter flowing to Public arg"
-    (neg_test
-       (TypingError
-          "call needs values with types \226\138\145 {i32, L} :: [] on the \
-           stack (found {i32, H} :: [])"))
-    {
-      memories = [];
-      globals =
-        [
-          {
-            gtype = { t = I32; lbl = Secret };
-            const = [ WI_Const 0 ];
-            mut = false;
-          };
-        ];
-      functions =
-        [
-          {
-            ftype = FunType ([ { t = I32; lbl = Public } ], Public, []);
-            locals = [];
-            body = [ WI_Nop ];
-            export_name = None;
-          };
-          {
-            ftype = FunType ([], Public, []);
-            locals = [];
-            body = [ WI_GlobalGet 0; WI_Call 0 ];
-            export_name = None;
-          };
-        ];
-    }
-
-(*
-  Can't enter Secret function with Public pc
-
-  (func <Secret>
-     nop
-  )
-
-  (func <Public>
-      call 0
-  )
-*)
-
-let _ =
-  test "can't enter Secret function with Public pc"
-    (neg_test (err_call1 Secret Public))
-    {
-      memories = [];
-      globals = [];
-      functions =
-        [
-          {
-            ftype = FunType ([], Secret, []);
-            locals = [];
-            body = [ WI_Nop ];
-            export_name = None;
-          };
-          {
-            ftype = FunType ([], Public, []);
-            locals = [];
-            body = [ WI_Call 0 ];
+            body = [ WI_LocalGet 0 ];
             export_name = None;
           };
         ];
@@ -1186,57 +1094,3 @@ let _ =
 (*  Run suite! *)
 
 let _ = run_test_tt_main ("SecMiniWasm" >::: !test_list)
-
-(* TODO : Refactor example into test
-
-   let example_module : wasm_module =
-     {
-       globals = [];
-       functions =
-         [
-           {
-             ftype = FunType ([ I32; Public; I32 ], []);
-             locals = [ I32 ];
-             body =
-               [
-                 WI_Nop;
-                 WI_LocalGet 0l;
-                 WI_LocalGet 1l;
-                 WI_BinOp Add;
-                 WI_Const 0l;
-                 WI_BinOp Eq;
-                 WI_If
-                   ( [ WI_Nop; WI_Const 2l; WI_LocalSet 0l ],
-                     [ WI_Const 42l; WI_LocalSet 0l ] );
-               ];
-             export_name = Some "hello";
-           };
-         ];
-     }
-
-   let example_module' =
-     {
-       globals =
-         [
-           { gtype = { t = I32; lbl = Secret }; const = [ WI_Const 40l ] };
-           { gtype = { t = I32; lbl = Public }; const = [ WI_Const 0l ] };
-         ];
-       functions =
-         [
-           {
-             ftype = FunType ([], []);
-             locals = [];
-             body =
-               [
-                 WI_Const 1l;
-                 WI_Const 1l;
-                 WI_BinOp Add;
-                 WI_GlobalGet 0l;
-                 WI_BinOp Add;
-                 WI_GlobalSet 1l;
-               ];
-             export_name = None;
-           };
-         ];
-     }
-*)
