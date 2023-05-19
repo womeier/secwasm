@@ -1060,7 +1060,7 @@ let _ =
     }
 
 (*
-  Can't enter Secret function with Public pc
+  Can't enter Public function with Secret pc
   (func <Public>
      nop
   )
