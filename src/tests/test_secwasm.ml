@@ -957,6 +957,118 @@ let _ =
     }
 
 (*
+  Good function call
+  (func (result i32)
+      i32.const 0
+  )
+  (func (result i32)
+      call 0
+      i32.const 1
+      i32.add
+  )
+*)
+
+let _ =
+  test "good function call" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Const 0 ];
+            export_name = None;
+          };
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Call 0; WI_Const 1; WI_BinOp Add ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Can't enter function due to Secret parameter flowing to Public arg
+  (global i32<Secret> (i32.const 0))
+  (func <Public> (param i32<Public>)
+      nop
+  )
+  (func <Public>
+      global.get ;; loads secret parameter for call
+      call 0
+  )
+*)
+
+let _ =
+  test "can't enter function due to Secret parameter flowing to Public arg"
+    (neg_test
+       (TypingError
+          "call needs values with types \226\138\145 {i32, Public} :: [] on \
+           the stack (found {i32, Secret} :: [])"))
+    {
+      memories = [];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 0 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([ { t = I32; lbl = Public } ], Public, []);
+            locals = [];
+            body = [ WI_Nop ];
+            export_name = None;
+          };
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_GlobalGet 0; WI_Call 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Can't enter Secret function with Public pc
+  (func <Secret>
+     nop
+  )
+  (func <Public>
+      call 0
+  )
+*)
+
+let _ =
+  test "can't enter Secret function with Public pc"
+    (neg_test (err_call1 Secret Public))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Secret, []);
+            locals = [];
+            body = [ WI_Nop ];
+            export_name = None;
+          };
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Call 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Test block typechecks
 
   (func
