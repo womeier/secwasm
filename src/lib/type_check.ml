@@ -167,6 +167,19 @@ let err_function2 s1 s2 =
        "function must leave values with types ⊑ %s on the stack (found %s)"
        (print_st s1) (print_st s2))
 
+let err_branch_outside_block =
+  TypingError (Printf.sprintf "branching outside of a block")
+
+let err_branch_index idx max_idx =
+  TypingError
+    (Printf.sprintf "branching to index %i, valid indices range from 0 to %i"
+       idx max_idx)
+
+let err_branch_stack_size i1 i2 =
+  TypingError
+    (Printf.sprintf "branching expected at least %i values on stack (found %i)"
+       i1 i2)
+
 let err_branch_prefix s1 s2 =
   TypingError
     (Printf.sprintf "branching expected %s to be a prefix of the stack (%s)"
@@ -320,9 +333,19 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               | _ -> raise err_store_addrexists))
       | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps)
       | WI_Br i -> (
+          (* Check that
+             1. we're in a block
+             2. the branching index is valid *)
+          (match (i, List.length c.labels) with
+          | _, 0 -> raise err_branch_outside_block
+          | idx, labels_len ->
+              if idx < 0 || idx >= labels_len then
+                raise (err_branch_index idx (labels_len - 1)));
           (* Find the return type of the block that we're branching to *)
           let bt_out = lookup_label c i in
           (* Check that the top of the stack matches *)
+          if List.length bt_out > List.length st then
+            raise (err_branch_stack_size (List.length bt_out) (List.length st));
           let st, st' = split_at_index (List.length bt_out) st in
           if not (leq_stack st bt_out) then raise (err_branch_prefix bt_out st);
           (* Check that pc ⊑ st *)

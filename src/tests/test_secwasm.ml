@@ -1351,7 +1351,7 @@ let _ =
 
 let _ =
   test "type mismatch in br"
-    (neg_test (TypingError "type mismatch in br, expected [i32] but got []"))
+    (neg_test (err_branch_stack_size 1 0))
     {
       memory = None;
       globals = [];
@@ -1371,6 +1371,64 @@ let _ =
                     [ WI_Block (BlockType ([], []), [ WI_Br 1 ]); WI_Const 42 ]
                   );
               ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Unconditionally branching outside a block,
+  or in general to an index that is higher 
+  than the nesting depth of blocks
+
+  (module
+    (func
+      br 0
+    )
+  )
+*)
+
+let _ =
+  test "unconditional branching outside block"
+    (neg_test err_branch_outside_block)
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Br 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Unconditionally branching to an invalid index (negative)
+
+  (module
+    (func
+      block
+        br -1
+      end
+    )
+  )
+*)
+
+let _ =
+  test "unconditional branching to invalid index (negative)"
+    (neg_test (err_branch_index (-1) 0))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Block (BlockType ([], []), [ WI_Br (-1) ]) ];
             export_name = None;
           };
         ];
