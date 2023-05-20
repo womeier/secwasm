@@ -9,7 +9,7 @@ type labeled_value_type = { t : value_type; lbl : SimpleLattice.t }
 type stack_type = labeled_value_type list
 type fun_type = FunType of stack_type * SimpleLattice.t * stack_type
 type block_type = BlockType of stack_type * stack_type
-type binop = Add | Eq
+type binop = Add | Eq | Mul
 
 [@@@ocamlformat "disable"]
 
@@ -80,6 +80,7 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_Nop -> "nop"
   | WI_Const v -> "i32.const " ^ Int.to_string v
   | WI_BinOp Add -> "i32.add"
+  | WI_BinOp Mul -> "i32.mul"
   | WI_BinOp Eq -> "i32.eq"
   | WI_Call idx -> "call " ^ Int.to_string idx
   | WI_Drop -> "drop"
