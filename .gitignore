@@ -32,7 +32,6 @@ _opam/
 
 # WASM
 *.wasm
-*.wat
 
 .DS_Store
 .vscode/

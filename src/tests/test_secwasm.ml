@@ -43,7 +43,7 @@ let _ =
           {
             ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
             locals = [];
-            body = [ WI_Const 1l; WI_Const 1l; WI_BinOp Add ];
+            body = [ WI_Const 1; WI_Const 1; WI_BinOp Add ];
             export_name = None;
           };
         ];
@@ -70,7 +70,7 @@ let _ =
           {
             ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
             locals = [];
-            body = [ WI_Const 1l; WI_BinOp Add ];
+            body = [ WI_Const 1; WI_BinOp Add ];
             export_name = None;
           };
         ];
@@ -146,7 +146,7 @@ let _ =
           {
             ftype = FunType ([], Public, []);
             locals = [ { t = I32; lbl = Public } ];
-            body = [ WI_Const 42l; WI_Drop ];
+            body = [ WI_Const 42; WI_Drop ];
             export_name = None;
           };
         ];
@@ -184,6 +184,7 @@ let _ =
     (func
       (local i32)
       local.get 0
+      drop
     )
   )
 *)
@@ -197,7 +198,34 @@ let _ =
           {
             ftype = FunType ([], Public, []);
             locals = [ { t = I32; lbl = Public } ];
-            body = [ WI_LocalGet 0l ];
+            body = [ WI_LocalGet 0; WI_Drop ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Get non-existing local variable
+
+  (module
+    (func
+      local.get 0
+      drop
+    )
+  )
+*)
+let _ =
+  test "local.get non-existing local"
+    (neg_test (TypingError "expected local variable of index 0"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_LocalGet 0 ];
             export_name = None;
           };
         ];
@@ -222,7 +250,7 @@ let _ =
         [
           {
             gtype = { t = I32; lbl = Public };
-            const = [ WI_Const 0l ];
+            const = [ WI_Const 0 ];
             mut = true;
           };
         ];
@@ -231,7 +259,69 @@ let _ =
           {
             ftype = FunType ([], Public, []);
             locals = [];
-            body = [ WI_Const 42l; WI_GlobalSet 0l ];
+            body = [ WI_Const 42; WI_GlobalSet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Set a non-mut public global variable
+
+  (module
+    (global i32 (i32.const 0))
+    (func
+      i32.const 42
+      global.set 0
+    )
+  )
+*)
+let _ =
+  test "set non-mut global var"
+    (neg_test (TypingError "global.set expected global var to be mutable"))
+    {
+      memories = [];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Public };
+            const = [ WI_Const 0 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 42; WI_GlobalSet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Set a non-existing public global variable
+
+  (module
+    (func
+      i32.const 42
+      global.set 0
+    )
+  )
+*)
+let _ =
+  test "set non-existing global var"
+    (neg_test (TypingError "expected global variable of index 0"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 42; WI_GlobalSet 0 ];
             export_name = None;
           };
         ];
@@ -263,12 +353,12 @@ let _ =
         [
           {
             gtype = { t = I32; lbl = Secret };
-            const = [ WI_Const 0l ];
+            const = [ WI_Const 0 ];
             mut = false;
           };
           {
             gtype = { t = I32; lbl = Public };
-            const = [ WI_Const 0l ];
+            const = [ WI_Const 0 ];
             mut = true;
           };
         ];
@@ -277,8 +367,7 @@ let _ =
           {
             ftype = FunType ([], Public, []);
             locals = [];
-            body =
-              [ WI_GlobalGet 0l; WI_Const 1l; WI_BinOp Add; WI_GlobalSet 1l ];
+            body = [ WI_GlobalGet 0; WI_Const 1; WI_BinOp Add; WI_GlobalSet 1 ];
             export_name = None;
           };
         ];
@@ -305,7 +394,7 @@ let _ =
           {
             ftype = FunType ([], Public, []);
             locals = [ { t = I32; lbl = Public } ];
-            body = [ WI_Const 42l; WI_LocalSet 0l ];
+            body = [ WI_Const 42; WI_LocalSet 0 ];
             export_name = None;
           };
         ];
@@ -325,14 +414,68 @@ let _ =
 let _ =
   test "load" pos_test
     {
-      memories = [ { min_size = 1l; max_size = None } ];
+      memories = [ { min_size = 1; max_size = None } ];
       globals = [];
       functions =
         [
           {
             ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
             locals = [];
-            body = [ WI_Const 0l; WI_Load Public ];
+            body = [ WI_Const 0; WI_Load Public ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Load no memory present
+
+  (module
+    (func
+      i32.const 0
+      i32.load
+    )
+  )
+*)
+let _ =
+  test "load no memory present "
+    (neg_test (TypingError "load expected memory in the context"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Const 0; WI_Load Public ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Store no memory present
+
+  (module
+    (func
+      i32.const 0
+      i32.load
+    )
+  )
+*)
+let _ =
+  test "store no memory present "
+    (neg_test (TypingError "store expected memory in the context"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 0; WI_Const 0; WI_Store Public ];
             export_name = None;
           };
         ];
@@ -353,14 +496,54 @@ let _ =
 let _ =
   test "store" pos_test
     {
-      memories = [ { min_size = 1l; max_size = None } ];
+      memories = [ { min_size = 1; max_size = None } ];
       globals = [];
       functions =
         [
           {
             ftype = FunType ([], Public, []);
             locals = [];
-            body = [ WI_Const 0l; WI_Const 42l; WI_Store Public ];
+            body = [ WI_Const 0; WI_Const 42; WI_Store Public ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Storing secret value in public memory is forbidden
+
+  (module
+    (memory 1)
+    (global i32<Secret>)
+    (func
+      i32.const 0
+      global.get 0
+      i32.store Public
+    )
+  )
+*)
+let _ =
+  test "store secret value in public memory"
+    (neg_test
+       (PrivacyViolation
+          "store expected pc ⊔ la ⊔ lv ⊑ lm but was pc=Public, la=Public, \
+           lv=Secret, lm=Public"))
+    {
+      memories = [ { min_size = 1; max_size = None } ];
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 0 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 0; WI_GlobalGet 0; WI_Store Public ];
             export_name = None;
           };
         ];
@@ -387,17 +570,17 @@ let _ =
           "global.set expected pc \226\138\148 l \226\138\145 l' but was \
            pc=Public, l=Secret, l'=Public"))
     {
-      memories = [];
+      memories = [ { min_size = 1; max_size = None } ];
       globals =
         [
           {
             gtype = { t = I32; lbl = Secret };
-            const = [ WI_Const 0l ];
+            const = [ WI_Const 0 ];
             mut = false;
           };
           {
             gtype = { t = I32; lbl = Public };
-            const = [ WI_Const 0l ];
+            const = [ WI_Const 0 ];
             mut = true;
           };
         ];
@@ -406,7 +589,7 @@ let _ =
           {
             ftype = FunType ([], Public, []);
             locals = [];
-            body = [ WI_GlobalGet 0l; WI_Load Public; WI_GlobalSet 1l ];
+            body = [ WI_GlobalGet 0; WI_Load Public; WI_GlobalSet 1 ];
             export_name = None;
           };
         ];
@@ -497,7 +680,7 @@ let _ =
             locals = [];
             body =
               [
-                WI_Const 42l;
+                WI_Const 42;
                 WI_Block
                   (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Drop ]);
               ];
@@ -562,7 +745,7 @@ let _ =
             locals = [];
             body =
               [
-                WI_Const 42l;
+                WI_Const 42;
                 WI_Block
                   ( BlockType
                       ( [ { t = I32; lbl = Public } ],
@@ -597,7 +780,7 @@ let _ =
         [
           {
             gtype = { t = I32; lbl = Secret };
-            const = [ WI_Const 42l ];
+            const = [ WI_Const 42 ];
             mut = false;
           };
         ];
@@ -608,7 +791,7 @@ let _ =
             locals = [];
             body =
               [
-                WI_GlobalGet 0l;
+                WI_GlobalGet 0;
                 WI_Block
                   (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Drop ]);
               ];
@@ -639,7 +822,7 @@ let _ =
         [
           {
             gtype = { t = I32; lbl = Secret };
-            const = [ WI_Const 42l ];
+            const = [ WI_Const 42 ];
             mut = false;
           };
         ];
@@ -652,7 +835,7 @@ let _ =
               [
                 WI_Block
                   ( BlockType ([], [ { t = I32; lbl = Public } ]),
-                    [ WI_GlobalGet 0l ] );
+                    [ WI_GlobalGet 0 ] );
               ];
             export_name = None;
           };
@@ -706,7 +889,7 @@ let _ =
         [
           {
             gtype = { t = I32; lbl = Secret };
-            const = [ WI_Const 42l ];
+            const = [ WI_Const 42 ];
             mut = false;
           };
         ];
@@ -715,7 +898,193 @@ let _ =
           {
             ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
             locals = [];
-            body = [ WI_GlobalGet 0l ];
+            body = [ WI_GlobalGet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Function body doesn't correspond to function type (too few return values)
+
+  (module
+    (func (result i32)
+      nop
+    )
+  )
+*)
+let _ =
+  test "function body has incorrect type (too few return values)"
+    (neg_test (TypingError "function must leave 1 value on the stack (found 0)"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Nop ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Function body doesn't correspond to function type (too many return values)
+
+  (module
+    (func
+      i32.const 0
+    )
+  )
+*)
+let _ =
+  test "function body has incorrect type (too many return values)"
+    (neg_test (TypingError "function must leave 0 value on the stack (found 1)"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test block typechecks
+
+  (func
+  (param i32) (result i32)
+      local.get 0
+      block (param i32) (result i32)
+        nop
+      end
+  )
+*)
+let _ =
+  test "block-1" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [ { t = I32; lbl = Public } ];
+            body =
+              [
+                WI_LocalGet 0;
+                WI_Block
+                  ( BlockType
+                      ( [ { t = I32; lbl = Public } ],
+                        [ { t = I32; lbl = Public } ] ),
+                    [ WI_Nop ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test type mismatch at end of block, expected [] but got [i32]
+
+  (func
+  (param i32) (result i32)
+      local.get 0
+      block (param i32)
+        nop
+      end
+  )
+*)
+
+let _ =
+  test "type mismatch at end of block"
+    (neg_test (TypingError "block must leave 0 values on the stack (found 1)"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [ { t = I32; lbl = Public } ];
+            body =
+              [
+                WI_LocalGet 0;
+                WI_Block
+                  (BlockType ([ { t = I32; lbl = Public } ], []), [ WI_Nop ]);
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test type mismatch at end of function, expected [] but got [i32, i32]
+
+  (func (result i32)
+      i32.const 1
+      i32.const 2
+      i32.const 3
+  )
+*)
+
+let _ =
+  test "type mismatch at end of function"
+    (neg_test (TypingError "function must leave 1 value on the stack (found 3)"))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Const 1; WI_Const 2; WI_Const 3 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test func can get its arguments using local.get
+
+  (module
+    (func
+    (param i32) (result i32)
+      local.get 0
+    )
+  )
+*)
+let _ =
+  test "func can get it's argument using local.get" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body = [ WI_LocalGet 0 ];
             export_name = None;
           };
         ];
@@ -725,57 +1094,3 @@ let _ =
 (*  Run suite! *)
 
 let _ = run_test_tt_main ("SecMiniWasm" >::: !test_list)
-
-(* TODO : Refactor example into test
-
-   let example_module : wasm_module =
-     {
-       globals = [];
-       functions =
-         [
-           {
-             ftype = FunType ([ I32; Public; I32 ], []);
-             locals = [ I32 ];
-             body =
-               [
-                 WI_Nop;
-                 WI_LocalGet 0l;
-                 WI_LocalGet 1l;
-                 WI_BinOp Add;
-                 WI_Const 0l;
-                 WI_BinOp Eq;
-                 WI_If
-                   ( [ WI_Nop; WI_Const 2l; WI_LocalSet 0l ],
-                     [ WI_Const 42l; WI_LocalSet 0l ] );
-               ];
-             export_name = Some "hello";
-           };
-         ];
-     }
-
-   let example_module' =
-     {
-       globals =
-         [
-           { gtype = { t = I32; lbl = Secret }; const = [ WI_Const 40l ] };
-           { gtype = { t = I32; lbl = Public }; const = [ WI_Const 0l ] };
-         ];
-       functions =
-         [
-           {
-             ftype = FunType ([], []);
-             locals = [];
-             body =
-               [
-                 WI_Const 1l;
-                 WI_Const 1l;
-                 WI_BinOp Add;
-                 WI_GlobalGet 0l;
-                 WI_BinOp Add;
-                 WI_GlobalSet 1l;
-               ];
-             export_name = None;
-           };
-         ];
-     }
-*)

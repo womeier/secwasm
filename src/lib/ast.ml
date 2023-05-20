@@ -16,19 +16,18 @@ type binop = Add | Eq
 type wasm_instruction =
   | WI_Unreachable                                                    (* trap unconditionally *)
   | WI_Drop                                                           (* drop value *)
-  | WI_Const of int32                                                 (* constant *)
-  | WI_BinOp of binop                                                 (* binary numeric operator *)
-  | WI_Call of int32                                                  (* call function *)
-  | WI_LocalGet of int32                                              (* read local variable *)
-  | WI_LocalSet of int32                                              (* write local variable *)
-  | WI_GlobalGet of int32                                             (* read global variable *)
-  | WI_GlobalSet of int32                                             (* write global variable *)
+  | WI_Const of int                                                   (* constant *)
+  | WI_BinOp of binop                                                 (* binary numeric operator, deviates a bit from spec *)
+  | WI_Call of int                                                    (* call function *)
+  | WI_LocalGet of int                                                (* read local variable *)
+  | WI_LocalSet of int                                                (* write local variable *)
+  | WI_GlobalGet of int                                               (* read global variable *)
+  | WI_GlobalSet of int                                               (* write global variable *)
   | WI_Load of SimpleLattice.t                                        (* read memory at address *)
   | WI_Store of SimpleLattice.t                                       (* write memory at address *)
-  | WI_If of fun_type * wasm_instruction list * wasm_instruction list (* if then else *)
   | WI_Block of block_type * wasm_instruction list                    (* block *)
-  | WI_Br of int32                                                    (* unconditional branch *)
-  | WI_BrIf of int32                                                  (* conditional branch *)
+  | WI_Br of int                                                      (* unconditional branch *)
+  | WI_BrIf of int                                                    (* conditional branch *)
   | WI_Nop
 
 [@@@ocamlformat "enable"]
@@ -46,7 +45,7 @@ type wasm_func = {
   export_name : string option; (* export name, should start with '$' *)
 }
 
-type wasm_memory = { min_size : int32; max_size : int32 option } (* in #pages *)
+type wasm_memory = { min_size : int; max_size : int option } (* in #pages *)
 
 type wasm_module = {
   globals : wasm_global list;
@@ -79,26 +78,20 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   match instr with
   | WI_Unreachable -> "unreachable"
   | WI_Nop -> "nop"
-  | WI_Const v -> "i32.const " ^ Int32.to_string v
+  | WI_Const v -> "i32.const " ^ Int.to_string v
   | WI_BinOp Add -> "i32.add"
   | WI_BinOp Eq -> "i32.eq"
-  | WI_Call idx -> "call " ^ Int32.to_string idx
+  | WI_Call idx -> "call " ^ Int.to_string idx
   | WI_Drop -> "drop"
-  | WI_LocalGet idx -> "local.get " ^ Int32.to_string idx
-  | WI_LocalSet idx -> "local.set " ^ Int32.to_string idx
-  | WI_GlobalGet idx -> "global.get " ^ Int32.to_string idx
-  | WI_GlobalSet idx -> "global.set " ^ Int32.to_string idx
+  | WI_LocalGet idx -> "local.get " ^ Int.to_string idx
+  | WI_LocalSet idx -> "local.set " ^ Int.to_string idx
+  | WI_GlobalGet idx -> "global.get " ^ Int.to_string idx
+  | WI_GlobalSet idx -> "global.set " ^ Int.to_string idx
   | WI_Load _ -> "i32.load"
   | WI_Store _ -> "i32.store"
-  | WI_If (_, b1, b2) ->
-      "if" ^ nl
-      ^ pp_instructions (indent + 2) b1
-      ^ nl ^ spaces indent ^ "else" ^ nl
-      ^ pp_instructions (indent + 2) b2
-      ^ nl ^ spaces indent ^ "end" ^ nl
   | WI_Block (_, b) -> "(block " ^ nl ^ pp_instructions (indent + 2) b
-  | WI_Br idx -> "br " ^ Int32.to_string idx
-  | WI_BrIf idx -> "br_if " ^ Int32.to_string idx
+  | WI_Br idx -> "br " ^ Int.to_string idx
+  | WI_BrIf idx -> "br_if " ^ Int.to_string idx
 
 let pp_function (f : wasm_func) =
   let ps = match f.ftype with FunType (plist, _, _) -> plist in

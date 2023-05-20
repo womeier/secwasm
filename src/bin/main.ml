@@ -17,15 +17,17 @@ let example1_module : wasm_module =
           body =
             [
               WI_Nop;
-              WI_LocalGet 0l;
-              WI_LocalGet 1l;
+              WI_LocalGet 0;
+              WI_LocalGet 1;
               WI_BinOp Add;
-              WI_Const 0l;
+              WI_Const 0;
               WI_BinOp Eq;
-              WI_If
-                ( FunType ([], Public, []),
-                  [ WI_Nop; WI_Const 2l; WI_LocalSet 0l ],
-                  [ WI_Const 42l; WI_LocalSet 0l ] );
+              WI_LocalSet 0
+              (* WI_If
+                     ( FunType ([], Public, []),
+                       [ WI_Nop; WI_Const 2; WI_LocalSet 0 ],
+                       [ WI_Const 42; WI_LocalSet 0 ] );
+                 ]; *);
             ];
           export_name = Some "hello";
         };
