@@ -36,7 +36,9 @@ let example1_module : wasm_module =
 
 (****** CMDLINE PARSING *******)
 
+let pretty_print = ref false
 let typecheck = ref false
+let dynchecks = ref false
 let output_file = ref ""
 let wmodule = ref None
 
@@ -47,7 +49,11 @@ let set_module s =
 let speclist =
   [
     ("-example", Arg.String set_module, "Use secwasm example program <i>");
+    ("-pp", Arg.Set pretty_print, "Pretty print given secwasm program");
     ("-typecheck", Arg.Set typecheck, "Typecheck given secwasm program");
+    ( "-dynchecks",
+      Arg.Set dynchecks,
+      "Insert dynamic checks in given secwasm program" );
     ("-out", Arg.Set_string output_file, "Set output file name");
   ]
 
@@ -67,9 +73,9 @@ let usage_msg =
 =========================================
   EXAMPLE
 
-  ./main.exe -example 1 -out example.wat
+  ./main.exe -example 1 -pp -out example.wat
   ./main.exe -example 1 -typecheck
-  ./main.exe -example 1 -dyncheck -out example.wat
+  ./main.exe -example 1 -dynchecks -out example.wat
 =========================================
   The following commands are available:
 |}
@@ -99,6 +105,14 @@ let () =
         type_check_module m;
         (* Raises exception if module doesn't typecheck *)
         Printf.fprintf stdout "success!\n");
-      if not (String.equal !output_file "") then (
+      if !pretty_print then
+        if not (String.equal !output_file "") then (
+          Printf.fprintf stdout "pretty printing module to [%s]\n" !output_file;
+          output_module m)
+        else
+          Printf.fprintf stdout
+            "missing -out option\n\
+             usage: ./main.exe -example 1 -pp -out example1.wat\n";
+      if !dynchecks then (
         Printf.fprintf stdout "pretty printing module to [%s]\n" !output_file;
         output_module m)
