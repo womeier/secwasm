@@ -1196,7 +1196,6 @@ let _ =
         ];
     }
 
-
 (*
   Test func can get its arguments using local.get
 
@@ -1228,7 +1227,6 @@ let _ =
         ];
     }
 
-
 (*
   Test func can get its arguments using local.get
 
@@ -1242,7 +1240,7 @@ let _ =
 let _ =
   test "func can get it's argument using local.get" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [

@@ -41,6 +41,7 @@ let output_file = ref ""
 let wmodule = ref None
 
 let set_module s =
+  Printf.fprintf stdout "using test module: %s\n" s;
   match s with "1" -> wmodule := Some example1_module | _ -> ()
 
 let speclist =
@@ -59,6 +60,7 @@ let usage_msg =
 
   - typecheck example program
   - pretty print example program
+  - insert dynamic checks and pretty print example program
 
   - run the test suite: make test
 
@@ -67,6 +69,7 @@ let usage_msg =
 
   ./main.exe -example 1 -out example.wat
   ./main.exe -example 1 -typecheck
+  ./main.exe -example 1 -dyncheck -out example.wat
 =========================================
   The following commands are available:
 |}
@@ -76,13 +79,7 @@ let usage_msg =
 
   *)
 
-let typecheck_module m =
-  print_endline "Typechecking module...";
-  flush stdout;
-  type_check_module m
-
 let output_module m =
-  print_endline ("Printing to " ^ !output_file ^ "...");
   flush stdout;
   let oc = open_out !output_file in
   Printf.fprintf oc "%s\n" (pp_module m);
@@ -97,5 +94,11 @@ let () =
   | None ->
       failwith "No input program given, please specify one e.g. with -example 1"
   | Some m ->
-      if !typecheck then typecheck_module m;
-      if !output_file != "" then output_module m
+      if !typecheck then (
+        Printf.fprintf stdout "typechecking module\n";
+        type_check_module m;
+        (* Raises exception if module doesn't typecheck *)
+        Printf.fprintf stdout "success!\n");
+      if not (String.equal !output_file "") then (
+        Printf.fprintf stdout "pretty printing module to [%s]\n" !output_file;
+        output_module m)
