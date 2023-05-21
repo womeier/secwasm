@@ -2,18 +2,75 @@ open Ast
 
 let rec log2 x = match x with 1 -> 0 | _ -> 1 + log2 ((x + 1) / 2)
 
-type context = { locals : labeled_value_type list }
+type context = { locals : labeled_value_type list; memory : wasm_memory }
+
+let translate_store (c : context) (lbl_encoding : int) :
+    context * wasm_instruction =
+  (* We extend the list of locals with two extra items,
+         for saving the value to be stored and address to
+         stored into *)
+  let idx_val = List.length c.locals in
+  let idx_addr = List.length c.locals + 1 in
+  let new_ctxt =
+    {
+      c with
+      locals =
+        (* labels don't matter *)
+        c.locals @ [ { t = I32; lbl = Secret }; { t = I32; lbl = Secret } ];
+    }
+  in
+  ( new_ctxt,
+    WI_Block
+      ( BlockType
+          (* labels don't matter *)
+          ([ { t = I32; lbl = Secret }; { t = I32; lbl = Secret } ], []),
+        [
+          (* save value *)
+          WI_LocalSet idx_val;
+          (* save address *)
+          WI_LocalSet idx_addr;
+          (* === BEGIN STORE VALUE *)
+          WI_LocalGet idx_addr;
+          (* Start of BITMASK#0 *)
+          WI_Const (-1);
+          WI_Const 31;
+          WI_Const c.memory.size;
+          WI_BinOp Sub;
+          WI_BinOp Shr_u;
+          (* Top of the stack: 01111111 where 0 is at index mem_size (from the right) *)
+          (* Next element    : addr *)
+          (* Force addres into lower part of memory *)
+          WI_BinOp And;
+          (* Get value *)
+          WI_LocalGet idx_val;
+          (* Store it - label doesn't matter *)
+          WI_Store Secret;
+          (* === BEGIN STORE LABEL *)
+          WI_LocalGet idx_addr;
+          (* Start of BITMASK#1 *)
+          WI_Const 1;
+          WI_Const 15;
+          WI_Const c.memory.size;
+          WI_BinOp Add;
+          WI_BinOp Shl
+          (* Top of the stack: 1000000 where 1 is at index mem_size (from the right) *);
+          (* Next element    : addr *)
+          (* Force address into upper part of memory *)
+          WI_BinOp Or;
+          (* Push label on stack *)
+          WI_Const lbl_encoding;
+          (* Store it - label doesn't matter *)
+          WI_Store Secret;
+        ] ) )
 
 let transform_instr (c : context) (i : wasm_instruction) :
     context * wasm_instruction =
   match i with
   | WI_Load _ -> (c, WI_Block (BlockType ([], []), []))
-  | WI_Store _ ->
-      ( c,
-        WI_Block
-          ( BlockType
-              ([ { t = I32; lbl = Public }; { t = I32; lbl = Public } ], []),
-            [ WI_Const 42 ] ) )
+  | WI_Store l -> (
+      match l with
+      | Public -> translate_store c 0
+      | Secret -> translate_store c 1)
   | _ -> (c, i)
 
 let rec transform_seq (c : context) (seq : wasm_instruction list) :
@@ -28,18 +85,22 @@ let rec transform_seq (c : context) (seq : wasm_instruction list) :
       (* return the newest context and transformed list of instructions *)
       (c'', i' :: rest')
 
-let transform_func (f : wasm_func) : wasm_func =
+let transform_func (m : wasm_memory) (f : wasm_func) : wasm_func =
+  let ctxt = { locals = f.locals; memory = m } in
   (* transform the body of f*)
-  let ctxt = { locals = f.locals } in
   let ctxt', new_body = transform_seq ctxt f.body in
   { f with body = new_body; locals = ctxt'.locals }
 
 let transform_module (m : wasm_module) : wasm_module =
-  let mem' =
-    (* double the size of the memory and make sure it's a multiple of 2
-       This makes splitting an address up into low/ high addresses easier *)
-    match m.memory with
-    | None -> None
-    | Some mem -> Some { size = log2 mem.size * 2 }
-  in
-  { m with memory = mem'; functions = List.map transform_func m.functions }
+  match m.memory with
+  (* if module doesn't use a memory it doesn't typecheck *)
+  | None -> m
+  | Some mem ->
+      (* double the size of the memory and make sure it's a multiple of 2
+         This makes splitting an address up into low/ high addresses easier *)
+      let mem' = { size = log2 mem.size * 2 } in
+      {
+        m with
+        memory = Some mem';
+        functions = List.map (transform_func mem') m.functions;
+      }

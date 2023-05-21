@@ -1,5 +1,6 @@
 open Secwasm.Ast
 open Secwasm.Type_check
+open Secwasm.Dynamic_check
 
 let example1_module : wasm_module =
   {
@@ -34,6 +35,21 @@ let example1_module : wasm_module =
       ];
   }
 
+let example2_module : wasm_module =
+  {
+    memory = Some { size = 1 };
+    globals = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [ { t = I32; lbl = Public } ];
+          body = [ WI_Const 0; WI_Const 42; WI_Store Public ];
+          export_name = Some "foo";
+        };
+      ];
+  }
+
 (****** CMDLINE PARSING *******)
 
 let pretty_print = ref false
@@ -44,7 +60,10 @@ let wmodule = ref None
 
 let set_module s =
   Printf.fprintf stdout "using test module: %s\n" s;
-  match s with "1" -> wmodule := Some example1_module | _ -> ()
+  match s with
+  | "1" -> wmodule := Some example1_module
+  | "2" -> wmodule := Some example2_module
+  | _ -> ()
 
 let speclist =
   [
@@ -113,6 +132,13 @@ let () =
           Printf.fprintf stdout
             "missing -out option\n\
              usage: ./main.exe -example 1 -pp -out example1.wat\n";
-      if !dynchecks then (
-        Printf.fprintf stdout "pretty printing module to [%s]\n" !output_file;
-        output_module m)
+      if !dynchecks then
+        if not (String.equal !output_file "") then (
+          Printf.fprintf stdout "translating module to insert dynamic checks\n";
+          let m' = transform_module m in
+          Printf.fprintf stdout "pretty printing module to [%s]\n" !output_file;
+          output_module m')
+        else
+          Printf.fprintf stdout
+            "missing -out option\n\
+             usage: ./main.exe -example 1 -dynchecks -out example1-checks.wat\n"
