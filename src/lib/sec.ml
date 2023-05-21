@@ -5,6 +5,7 @@ module type LATTICE = sig
 
   val leq : t -> t -> bool
   val lub : t -> t -> t
+  val encode : t -> int
 end
 
 type 'a lattice = (module LATTICE with type t = 'a)
@@ -19,6 +20,7 @@ module SimpleLattice : LATTICE with type t = simpleLatticeElement = struct
     match (e1, e2) with Public, _ -> true | _, Secret -> true | _ -> false
 
   let lub e1 e2 = match (e1, e2) with Public, e2 -> e2 | _ -> Secret
+  let encode e = match e with Public -> 0 | _ -> 1
 end
 
 (*

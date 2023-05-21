@@ -1,10 +1,11 @@
 open Ast
+open Sec
 
 let rec log2 x = match x with 1 -> 0 | _ -> 1 + log2 ((x + 1) / 2)
 
 type context = { locals : labeled_value_type list; memory : wasm_memory }
 
-let translate_store (c : context) (lbl_encoding : int) :
+let translate_store (c : context) (encoded_lbl : int) :
     context * wasm_instruction =
   (* We extend the list of locals with two extra items,
          for saving the value to be stored and address to
@@ -58,19 +59,61 @@ let translate_store (c : context) (lbl_encoding : int) :
           (* Force address into upper part of memory *)
           WI_BinOp Or;
           (* Push label on stack *)
-          WI_Const lbl_encoding;
+          WI_Const encoded_lbl;
           (* Store it - label doesn't matter *)
           WI_Store Secret;
+        ] ) )
+
+let translate_load_secret (c : context) : context * wasm_instruction =
+  (* We extend the list of locals with two extra items,
+         for saving the value to be stored and address to
+         stored into *)
+  let idx_val = List.length c.locals in
+  let idx_addr = List.length c.locals + 1 in
+  let new_ctxt =
+    {
+      c with
+      locals =
+        (* labels don't matter *)
+        c.locals @ [ { t = I32; lbl = Secret }; { t = I32; lbl = Secret } ];
+    }
+  in
+  ( new_ctxt,
+    WI_Block
+      ( BlockType (* labels don't matter *) ([ { t = I32; lbl = Secret } ], []),
+        [
+          (* save value *)
+          WI_LocalSet idx_val;
+          (* save address *)
+          WI_LocalSet idx_addr;
+          (* === BEGIN CHECK LABELS *)
+          WI_LocalGet idx_addr;
+          (* Start of BITMASK#1 *)
+          WI_Const 1;
+          WI_Const 15;
+          WI_Const c.memory.size;
+          WI_BinOp Add;
+          WI_BinOp Shl
+          (* Top of the stack: 1000000 where 1 is at index mem_size (from the right) *);
+          (* Next element    : addr *)
+          (* Force address into upper part of memory *)
+          WI_BinOp Or;
+          (* Load labels from memory (4 bytes, i.e. 4 labels) - label doesn't matter*)
+          WI_Load Secret;
+          (* push 0b00000001000000010000000100000001*)
+          WI_Const 16843009;
+          (* TODO : Do we even need to check anything here, or is it just for translate_load_public? *)
+          WI_BinOp Eq;
         ] ) )
 
 let transform_instr (c : context) (i : wasm_instruction) :
     context * wasm_instruction =
   match i with
-  | WI_Load _ -> (c, WI_Block (BlockType ([], []), []))
-  | WI_Store l -> (
+  | WI_Load l -> (
       match l with
-      | Public -> translate_store c 0
-      | Secret -> translate_store c 1)
+      | Public -> failwith "TODO"
+      | Secret -> translate_load_secret c)
+  | WI_Store l -> translate_store c (SimpleLattice.encode l)
   | _ -> (c, i)
 
 let rec transform_seq (c : context) (seq : wasm_instruction list) :
