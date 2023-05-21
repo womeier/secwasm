@@ -1231,7 +1231,7 @@ let _ =
 
 (*
   Test func can get its arguments using local.get
-  
+
   (module
     (func
     (param i32) (result i32)
@@ -1379,7 +1379,7 @@ let _ =
 
 (*
   Unconditionally branching outside a block,
-  or in general to an index that is higher 
+  or in general to an index that is higher
   than the nesting depth of blocks
 
   (module
@@ -1393,7 +1393,7 @@ let _ =
   test "unconditional branching outside block"
     (neg_test err_branch_outside_block)
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1422,7 +1422,7 @@ let _ =
   test "unconditional branching to invalid index (negative)"
     (neg_test (err_branch_index (-1) 0))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
