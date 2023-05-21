@@ -1198,7 +1198,7 @@ let _ =
 
 (*
   Test func can get its arguments using local.get
-
+  
   (module
     (func
     (param i32) (result i32)
@@ -1221,6 +1221,182 @@ let _ =
                   [ { t = I32; lbl = Public } ] );
             locals = [];
             body = [ WI_LocalGet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test branch to end of current block
+
+  (module
+    (func
+    (param i32) (result i32)
+      block
+        br 0
+      end
+      i32.const 32
+    )
+  )
+*)
+let _ =
+  test "branch to end of current block" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body = [ WI_Block (BlockType ([], []), [ WI_Br 0 ]); WI_Const 42 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test branch to the end of nested block typechecks
+
+  (module
+    (func
+    (param i32) (result i32)
+      block (result i32)
+        block
+          br 0
+        end
+        i32.const 42
+      end
+    )
+  )
+*)
+
+let _ =
+  test "br-2" pos_test
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_Block (BlockType ([], []), [ WI_Br 0 ]); WI_Const 42 ]
+                  );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test type mismatch in br, expected [i32] but got []
+
+  (module
+    (func
+    (param i32) (result i32)
+      block (result i32)
+        block
+          br 1
+        end
+        i32.const 42
+      end
+    )
+  )
+*)
+
+let _ =
+  test "type mismatch in br"
+    (neg_test (err_branch_stack_size 1 0))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_Block (BlockType ([], []), [ WI_Br 1 ]); WI_Const 42 ]
+                  );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Unconditionally branching outside a block,
+  or in general to an index that is higher 
+  than the nesting depth of blocks
+
+  (module
+    (func
+      br 0
+    )
+  )
+*)
+
+let _ =
+  test "unconditional branching outside block"
+    (neg_test err_branch_outside_block)
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Br 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Unconditionally branching to an invalid index (negative)
+
+  (module
+    (func
+      block
+        br -1
+      end
+    )
+  )
+*)
+
+let _ =
+  test "unconditional branching to invalid index (negative)"
+    (neg_test (err_branch_index (-1) 0))
+    {
+      memories = [];
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Block (BlockType ([], []), [ WI_Br (-1) ]) ];
             export_name = None;
           };
         ];
