@@ -36,7 +36,7 @@ let test (name : string) (t : wasm_module -> test_ctxt -> unit)
 let _ =
   test "add consts" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -63,7 +63,7 @@ let _ =
 let _ =
   test "add consts 2" (neg_test err_binop)
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -88,7 +88,7 @@ let _ =
 let _ =
   test "nop" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -113,7 +113,7 @@ let _ =
 let _ =
   test "unreachable" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -139,7 +139,7 @@ let _ =
 let _ =
   test "drop" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -164,7 +164,7 @@ let _ =
 let _ =
   test "drop 2" (neg_test err_drop)
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -191,7 +191,7 @@ let _ =
 let _ =
   test "local.get" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -218,7 +218,7 @@ let _ =
   test "local.get non-existing local"
     (neg_test (TypingError "did not find local variable of index 0"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -245,7 +245,7 @@ let _ =
 let _ =
   test "global.set" pos_test
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -280,7 +280,7 @@ let _ =
   test "set non-mut global var"
     (neg_test (TypingError "global.set expected global var to be mutable"))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -314,7 +314,7 @@ let _ =
   test "set non-existing global var"
     (neg_test (TypingError "did not find global variable of index 0"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -348,7 +348,7 @@ let _ =
           "global.set expected pc \226\138\148 l \226\138\145 l' but was \
            pc=Public, l=Secret, l'=Public"))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -387,7 +387,7 @@ let _ =
 let _ =
   test "local.set" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -414,7 +414,7 @@ let _ =
 let _ =
   test "load" pos_test
     {
-      memories = [ { min_size = 1; max_size = None } ];
+      memory = Some { size = 1 };
       globals = [];
       functions =
         [
@@ -441,7 +441,7 @@ let _ =
   test "load no memory present "
     (neg_test (TypingError "load expected memory in the context"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -468,7 +468,7 @@ let _ =
   test "store no memory present "
     (neg_test (TypingError "store expected memory in the context"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -496,7 +496,7 @@ let _ =
 let _ =
   test "store" pos_test
     {
-      memories = [ { min_size = 1; max_size = None } ];
+      memory = Some { size = 1 };
       globals = [];
       functions =
         [
@@ -529,7 +529,7 @@ let _ =
           "store expected pc ⊔ la ⊔ lv ⊑ lm but was pc=Public, la=Public, \
            lv=Secret, lm=Public"))
     {
-      memories = [ { min_size = 1; max_size = None } ];
+      memory = Some { size = 1 };
       globals =
         [
           {
@@ -570,7 +570,7 @@ let _ =
           "global.set expected pc \226\138\148 l \226\138\145 l' but was \
            pc=Public, l=Secret, l'=Public"))
     {
-      memories = [ { min_size = 1; max_size = None } ];
+      memory = Some { size = 1 };
       globals =
         [
           {
@@ -609,7 +609,7 @@ let _ =
 let _ =
   test "block 1" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -638,7 +638,7 @@ let _ =
 let _ =
   test "nested block" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -671,7 +671,7 @@ let _ =
 let _ =
   test "block with simple param" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -704,7 +704,7 @@ let _ =
   test "block with simple param"
     (neg_test (err_block1 1 0))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -736,7 +736,7 @@ let _ =
   test "block with simple param 2"
     (neg_test (err_block2 1 0))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -775,7 +775,7 @@ let _ =
     (neg_test
        (err_block3 [ { t = I32; lbl = Public } ] [ { t = I32; lbl = Secret } ]))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -817,7 +817,7 @@ let _ =
     (neg_test
        (err_block4 [ { t = I32; lbl = Public } ] [ { t = I32; lbl = Secret } ]))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -855,7 +855,7 @@ let _ =
   test "function output stack incorrect length"
     (neg_test (err_function1 1 0))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -884,7 +884,7 @@ let _ =
           [ { t = I32; lbl = Public } ]
           [ { t = I32; lbl = Secret } ]))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -917,7 +917,7 @@ let _ =
   test "function body has incorrect type (too few return values)"
     (neg_test (TypingError "function must leave 1 value on the stack (found 0)"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -943,7 +943,7 @@ let _ =
   test "function body has incorrect type (too many return values)"
     (neg_test (TypingError "function must leave 0 value on the stack (found 1)"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -971,7 +971,7 @@ let _ =
 let _ =
   test "good function call" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1001,7 +1001,7 @@ let _ =
   test "call non-existing function"
     (neg_test (TypingError "did not find function of index 5"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1033,7 +1033,7 @@ let _ =
           "call needs values with types \226\138\145 {i32, Public} :: [] on \
            the stack (found {i32, Secret} :: [])"))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -1073,7 +1073,7 @@ let _ =
   test "can't enter Public function with Secret pc"
     (neg_test (err_call1 Public Secret))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1106,7 +1106,7 @@ let _ =
 let _ =
   test "block-1" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1147,7 +1147,7 @@ let _ =
   test "type mismatch at end of block"
     (neg_test (TypingError "block must leave 0 values on the stack (found 1)"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1183,7 +1183,7 @@ let _ =
   test "type mismatch at end of function"
     (neg_test (TypingError "function must leave 1 value on the stack (found 3)"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1209,7 +1209,7 @@ let _ =
 let _ =
   test "func can get it's argument using local.get" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [

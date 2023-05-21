@@ -8,7 +8,7 @@ open Ast
 open Sec
 
 type context = {
-  memories : int; (* number of memories *)
+  memory : wasm_memory option; (* number of memories *)
   func_types : fun_type list;
   globals : wasm_global list;
   locals : labeled_value_type list;
@@ -18,7 +18,7 @@ type context = {
 
 let empty_context =
   {
-    memories = 0;
+    memory = None;
     func_types = [];
     globals = [];
     locals = [];
@@ -311,24 +311,26 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               ((st', pc) :: g', c)
           | _ -> raise err_globalset3)
       | WI_Load lm -> (
-          if c.memories == 0 then raise err_load_nomemory
-          else
-            match st with
-            | { t = _; lbl = la } :: st ->
-                (* l = l_a ⊔ l_m ⊔ pc *)
-                let lbl = la <> lm <> pc in
-                (({ t = I32; lbl } :: st, pc) :: g', c)
-            | _ -> raise err_load_addrexists)
+          match c.memory with
+          | None -> raise err_load_nomemory
+          | Some _ -> (
+              match st with
+              | { t = _; lbl = la } :: st ->
+                  (* l = l_a ⊔ l_m ⊔ pc *)
+                  let lbl = la <> lm <> pc in
+                  (({ t = I32; lbl } :: st, pc) :: g', c)
+              | _ -> raise err_load_addrexists))
       | WI_Store lm -> (
-          if c.memories == 0 then raise err_store_nomemory
-          else
-            match st with
-            | { t = _; lbl = lv } :: { t = _; lbl = la } :: st' ->
-                (* Addr and val are known to be I32, check that pc ⊔ l_a ⊔ l_v ⊑ l_m *)
-                if not (pc <> la <> lv <<= lm) then
-                  raise (err_store2 pc la lv lm);
-                ((st', pc) :: g', c)
-            | _ -> raise err_store_addrexists)
+          match c.memory with
+          | None -> raise err_store_nomemory
+          | Some _ -> (
+              match st with
+              | { t = _; lbl = lv } :: { t = _; lbl = la } :: st' ->
+                  (* Addr and val are known to be I32, check that pc ⊔ l_a ⊔ l_v ⊑ l_m *)
+                  if not (pc <> la <> lv <<= lm) then
+                    raise (err_store2 pc la lv lm);
+                  ((st', pc) :: g', c)
+              | _ -> raise err_store_addrexists))
       | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps)
       | WI_Br i -> (
           (* Check that
@@ -403,7 +405,7 @@ let type_check_module (m : wasm_module) =
     {
       empty_context with
       globals = m.globals;
-      memories = List.length m.memories;
+      memory = m.memory;
       func_types = List.map (fun f -> f.ftype) m.functions;
     }
   in
