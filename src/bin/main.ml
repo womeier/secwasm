@@ -78,11 +78,11 @@ let store_and_load_module (store_addr : int) (load_addr : int)
       ];
   }
 
-let store_and_load_at_same_address = store_and_load_module 0 0
-let store_public_load_as_public = store_and_load_at_same_address Public Public
-let store_public_load_as_secret = store_and_load_at_same_address Public Secret
-let store_secret_load_as_public = store_and_load_at_same_address Secret Public
-let store_secret_load_as_secret = store_and_load_at_same_address Secret Secret
+let store_and_load_first_byte = store_and_load_module 0 0
+let store_public_load_as_public = store_and_load_first_byte Public Public
+let store_public_load_as_secret = store_and_load_first_byte Public Secret
+let store_secret_load_as_public = store_and_load_first_byte Secret Public
+let store_secret_load_as_secret = store_and_load_first_byte Secret Secret
 
 (****** CMDLINE PARSING *******)
 
@@ -109,7 +109,18 @@ let set_module s =
   | "8" ->
       (* Should trap! *)
       wmodule := Some (store_and_load_module 0 3 Secret Public)
-  | "9" -> (* Ok! *) wmodule := Some (store_and_load_module 0 4 Secret Public)
+  | "9" ->
+      (* Ok, we're readying 2nd word in memory! *)
+      wmodule := Some (store_and_load_module 0 4 Secret Public)
+  | "10" ->
+      (* store and load at last available byte in 1 page memory *)
+      wmodule := Some (store_and_load_module 65532 65532 Public Public)
+  | "11" ->
+      (* store and load at last available byte in 1 page memory *)
+      wmodule := Some (store_and_load_module 65532 65532 Public Secret)
+  | "12" ->
+      (* store and load at first index out of bounds  *)
+      wmodule := Some (store_and_load_module 65533 65533 Secret Secret)
   | _ -> ()
 
 let speclist =
