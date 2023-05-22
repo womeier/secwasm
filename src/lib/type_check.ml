@@ -8,8 +8,8 @@ open Ast
 open Sec
 
 type context = {
-  memories : int; (* number of memories *)
-  funcs : fun_type list;
+  memory : wasm_memory option; (* number of memories *)
+  func_types : fun_type list;
   globals : wasm_global list;
   locals : labeled_value_type list;
   labels : labeled_value_type list list;
@@ -18,8 +18,8 @@ type context = {
 
 let empty_context =
   {
-    memories = 0;
-    funcs = [];
+    memory = None;
+    func_types = [];
     globals = [];
     locals = [];
     labels = [];
@@ -34,7 +34,7 @@ type stack_of_stacks_type = (stack_type * pc_type) list
 
 let split_at_index n l =
   let rec f n l acc =
-    if n = 0 then (acc, l)
+    if n <= 0 then (acc, l)
     else
       match l with
       | [] -> failwith "split_at_index: list is empty!"
@@ -143,6 +143,20 @@ let err_block4 s1 s2 =
        "block must leave values with types ⊑ %s on the stack (found %s)"
        (print_st s1) (print_st s2))
 
+let err_call1 l1 l2 =
+  TypingError
+    (Printf.sprintf "can't call function labeled as %s (pc: %s)" (str_l l1)
+       (str_l l2))
+
+let err_call2 i1 i2 =
+  TypingError
+    (Printf.sprintf "call needs %d values on the stack (found %d)" i1 i2)
+
+let err_call3 s1 s2 =
+  TypingError
+    (Printf.sprintf "call needs values with types ⊑ %s on the stack (found %s)"
+       (print_st s1) (print_st s2))
+
 let err_function1 i1 i2 =
   TypingError
     (Printf.sprintf "function must leave %d value on the stack (found %d)" i1 i2)
@@ -153,15 +167,54 @@ let err_function2 s1 s2 =
        "function must leave values with types ⊑ %s on the stack (found %s)"
        (print_st s1) (print_st s2))
 
+let err_branch_outside_block =
+  TypingError (Printf.sprintf "branching outside of a block")
+
+let err_branch_index idx max_idx =
+  TypingError
+    (Printf.sprintf "branching to index %i, valid indices range from 0 to %i"
+       idx max_idx)
+
+let err_branch_stack_size i1 i2 =
+  TypingError
+    (Printf.sprintf "branching expected at least %i values on stack (found %i)"
+       i1 i2)
+
+let err_branch_prefix s1 s2 =
+  TypingError
+    (Printf.sprintf "branching expected %s to be a prefix of the stack (%s)"
+       (print_st s1) (print_st s2))
+
+let err_branch_stack_security_level l s =
+  TypingError
+    (Printf.sprintf
+       "branching expected security level of all values on stack %s to be \
+        greater than %s"
+       (print_st s) (str_l l))
+
+let err_gamma_subtype g1 g2 =
+  TypingError
+    (Printf.sprintf
+       "expected gamma %s to have lower security level than gamma' %s"
+       (print_g g1) (print_g g2))
+
 (* ======= Type checking ======= *)
 
 let lookup_global (c : context) (idx : int) =
-  if idx < List.length c.globals then List.nth c.globals idx
-  else t_err0 ("expected global variable of index " ^ Int.to_string idx)
+  if 0 <= idx && idx < List.length c.globals then List.nth c.globals idx
+  else t_err0 ("did not find global variable of index " ^ Int.to_string idx)
 
 let lookup_local (c : context) (idx : int) =
-  if idx < List.length c.locals then List.nth c.locals idx
-  else t_err0 ("expected local variable of index " ^ Int.to_string idx)
+  if 0 <= idx && idx < List.length c.locals then List.nth c.locals idx
+  else t_err0 ("did not find local variable of index " ^ Int.to_string idx)
+
+let lookup_func_type (c : context) (idx : int) =
+  if 0 <= idx && idx < List.length c.func_types then List.nth c.func_types idx
+  else t_err0 ("did not find function of index " ^ Int.to_string idx)
+
+let lookup_label (c : context) (idx : int) =
+  if idx < List.length c.labels then List.nth c.labels idx
+  else failwith ("expected label of index " ^ Int.to_string idx)
 
 let check_stack s1 s2 =
   assert (
@@ -170,10 +223,30 @@ let check_stack s1 s2 =
          (fun { t = t1; lbl = _lbl1 } { t = t2; lbl = _lbl2 } -> t1 == t2)
          s1 s2)
 
+let same_lengths l1 l2 = List.compare_lengths l1 l2 == 0
 let leq_ty { t = t1; lbl = l1 } { t = t2; lbl = l2 } = t1 == t2 && l1 <<= l2
 
 let leq_stack (s1 : labeled_value_type list) (s2 : labeled_value_type list) =
-  List.for_all2 leq_ty s1 s2
+  same_lengths s1 s2 && List.for_all2 leq_ty s1 s2
+
+let leq_gamma (g1 : stack_of_stacks_type) (g2 : stack_of_stacks_type) =
+  same_lengths g1 g2
+  && List.for_all2 (fun (st1, _) (st2, _) -> leq_stack st1 st2) g1 g2
+
+let lift_st lbl_lift_to st =
+  let lift_st_helper ({ lbl; _ } as v) acc =
+    { v with lbl = lbl_lift_to <> lbl } :: acc
+  in
+  List.fold_right lift_st_helper st []
+
+let lift_g lbl_lift_to g =
+  let lift_gamma_helper (st, pc) acc =
+    (lift_st lbl_lift_to st, lbl_lift_to <> pc) :: acc
+  in
+  List.fold_right lift_gamma_helper g []
+
+let lift (lbl_lift_to : SimpleLattice.t) (g : stack_of_stacks_type) =
+  lift_g lbl_lift_to g
 
 let rec check_instr ((g, c) : stack_of_stacks_type * context)
     (i : wasm_instruction) : stack_of_stacks_type * context =
@@ -196,7 +269,19 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               let lbl3 = v1.lbl <> v2.lbl <> pc in
               (({ t = v1.t; lbl = lbl3 } :: st', pc) :: g', c)
           | _ -> raise err_binop)
-      | WI_Call _ -> raise (NotImplemented "call")
+      | WI_Call idx -> (
+          match lookup_func_type c idx with
+          | FunType (ft_in, lbl, ft_out) ->
+              (* Check if entering function is allowed *)
+              if not (pc <<= lbl) then raise (err_call1 lbl pc);
+              (* Check enough arguments *)
+              if List.length ft_in > List.length st then
+                raise (err_call2 (List.length ft_in) (List.length st));
+              (* st' corresponds to st in the paper *)
+              let tau1, st' = split_at_index (List.length ft_in) st in
+              (* actual input argument types <= labeled input types *)
+              if not (leq_stack tau1 ft_in) then raise (err_call3 ft_in tau1);
+              ((ft_out @ st', pc) :: g', c))
       | WI_LocalGet idx ->
           let { t; lbl } = lookup_local c idx in
           (({ t; lbl = pc <> lbl } :: st, pc) :: g', c)
@@ -226,26 +311,51 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               ((st', pc) :: g', c)
           | _ -> raise err_globalset3)
       | WI_Load lm -> (
-          if c.memories == 0 then raise err_load_nomemory
-          else
-            match st with
-            | { t = _; lbl = la } :: st ->
-                (* l = l_a ⊔ l_m ⊔ pc *)
-                let lbl = la <> lm <> pc in
-                (({ t = I32; lbl } :: st, pc) :: g', c)
-            | _ -> raise err_load_addrexists)
+          match c.memory with
+          | None -> raise err_load_nomemory
+          | Some _ -> (
+              match st with
+              | { t = _; lbl = la } :: st ->
+                  (* l = l_a ⊔ l_m ⊔ pc *)
+                  let lbl = la <> lm <> pc in
+                  (({ t = I32; lbl } :: st, pc) :: g', c)
+              | _ -> raise err_load_addrexists))
       | WI_Store lm -> (
-          if c.memories == 0 then raise err_store_nomemory
-          else
-            match st with
-            | { t = _; lbl = lv } :: { t = _; lbl = la } :: st' ->
-                (* Addr and val are known to be I32, check that pc ⊔ l_a ⊔ l_v ⊑ l_m *)
-                if not (pc <> la <> lv <<= lm) then
-                  raise (err_store2 pc la lv lm);
-                ((st', pc) :: g', c)
-            | _ -> raise err_store_addrexists)
+          match c.memory with
+          | None -> raise err_store_nomemory
+          | Some _ -> (
+              match st with
+              | { t = _; lbl = lv } :: { t = _; lbl = la } :: st' ->
+                  (* Addr and val are known to be I32, check that pc ⊔ l_a ⊔ l_v ⊑ l_m *)
+                  if not (pc <> la <> lv <<= lm) then
+                    raise (err_store2 pc la lv lm);
+                  ((st', pc) :: g', c)
+              | _ -> raise err_store_addrexists))
       | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps)
-      | WI_Br _ -> raise (NotImplemented "br")
+      | WI_Br i -> (
+          (* Check that
+             1. we're in a block
+             2. the branching index is valid *)
+          (match (i, List.length c.labels) with
+          | _, 0 -> raise err_branch_outside_block
+          | idx, labels_len ->
+              if idx < 0 || idx >= labels_len then
+                raise (err_branch_index idx (labels_len - 1)));
+          (* Find the return type of the block that we're branching to *)
+          let bt_out = lookup_label c i in
+          (* Check that the top of the stack matches *)
+          if List.length bt_out > List.length st then
+            raise (err_branch_stack_size (List.length bt_out) (List.length st));
+          let st, st' = split_at_index (List.length bt_out) st in
+          if not (leq_stack st bt_out) then raise (err_branch_prefix bt_out st);
+          (* Check that pc ⊑ st *)
+          if not (List.for_all (fun v -> pc <<= v.lbl) st) then
+            raise (err_branch_stack_security_level pc st);
+          (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
+          let g1, g2 = split_at_index (i - 1) g' in
+          match lift pc ((st @ st', pc) :: g1) with
+          | [] -> raise (InternalError "stack-of-stacks ill-formed")
+          | (st'', pc') :: g1' -> (((st'', pc') :: g1') @ g2, c))
       | WI_BrIf _ -> raise (NotImplemented "br_if"))
   | _ -> raise (InternalError "stack-of-stacks ill-formed")
 
@@ -295,7 +405,8 @@ let type_check_module (m : wasm_module) =
     {
       empty_context with
       globals = m.globals;
-      memories = List.length m.memories;
+      memory = m.memory;
+      func_types = List.map (fun f -> f.ftype) m.functions;
     }
   in
   let _ = List.map (type_check_function c) m.functions in

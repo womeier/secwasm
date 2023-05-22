@@ -36,7 +36,7 @@ let test (name : string) (t : wasm_module -> test_ctxt -> unit)
 let _ =
   test "add consts" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -63,7 +63,7 @@ let _ =
 let _ =
   test "add consts 2" (neg_test err_binop)
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -88,7 +88,7 @@ let _ =
 let _ =
   test "nop" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -113,7 +113,7 @@ let _ =
 let _ =
   test "unreachable" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -139,7 +139,7 @@ let _ =
 let _ =
   test "drop" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -164,7 +164,7 @@ let _ =
 let _ =
   test "drop 2" (neg_test err_drop)
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -191,7 +191,7 @@ let _ =
 let _ =
   test "local.get" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -216,9 +216,9 @@ let _ =
 *)
 let _ =
   test "local.get non-existing local"
-    (neg_test (TypingError "expected local variable of index 0"))
+    (neg_test (TypingError "did not find local variable of index 0"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -245,7 +245,7 @@ let _ =
 let _ =
   test "global.set" pos_test
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -280,7 +280,7 @@ let _ =
   test "set non-mut global var"
     (neg_test (TypingError "global.set expected global var to be mutable"))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -312,9 +312,9 @@ let _ =
 *)
 let _ =
   test "set non-existing global var"
-    (neg_test (TypingError "expected global variable of index 0"))
+    (neg_test (TypingError "did not find global variable of index 0"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -348,7 +348,7 @@ let _ =
           "global.set expected pc \226\138\148 l \226\138\145 l' but was \
            pc=Public, l=Secret, l'=Public"))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -387,7 +387,7 @@ let _ =
 let _ =
   test "local.set" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -414,7 +414,7 @@ let _ =
 let _ =
   test "load" pos_test
     {
-      memories = [ { min_size = 1; max_size = None } ];
+      memory = Some { size = 1 };
       globals = [];
       functions =
         [
@@ -441,7 +441,7 @@ let _ =
   test "load no memory present "
     (neg_test (TypingError "load expected memory in the context"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -468,7 +468,7 @@ let _ =
   test "store no memory present "
     (neg_test (TypingError "store expected memory in the context"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -496,7 +496,7 @@ let _ =
 let _ =
   test "store" pos_test
     {
-      memories = [ { min_size = 1; max_size = None } ];
+      memory = Some { size = 1 };
       globals = [];
       functions =
         [
@@ -529,7 +529,7 @@ let _ =
           "store expected pc ⊔ la ⊔ lv ⊑ lm but was pc=Public, la=Public, \
            lv=Secret, lm=Public"))
     {
-      memories = [ { min_size = 1; max_size = None } ];
+      memory = Some { size = 1 };
       globals =
         [
           {
@@ -570,7 +570,7 @@ let _ =
           "global.set expected pc \226\138\148 l \226\138\145 l' but was \
            pc=Public, l=Secret, l'=Public"))
     {
-      memories = [ { min_size = 1; max_size = None } ];
+      memory = Some { size = 1 };
       globals =
         [
           {
@@ -609,7 +609,7 @@ let _ =
 let _ =
   test "block 1" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -638,7 +638,7 @@ let _ =
 let _ =
   test "nested block" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -671,7 +671,7 @@ let _ =
 let _ =
   test "block with simple param" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -704,7 +704,7 @@ let _ =
   test "block with simple param"
     (neg_test (err_block1 1 0))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -736,7 +736,7 @@ let _ =
   test "block with simple param 2"
     (neg_test (err_block2 1 0))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -775,7 +775,7 @@ let _ =
     (neg_test
        (err_block3 [ { t = I32; lbl = Public } ] [ { t = I32; lbl = Secret } ]))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -817,7 +817,7 @@ let _ =
     (neg_test
        (err_block4 [ { t = I32; lbl = Public } ] [ { t = I32; lbl = Secret } ]))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -855,7 +855,7 @@ let _ =
   test "function output stack incorrect length"
     (neg_test (err_function1 1 0))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -884,7 +884,7 @@ let _ =
           [ { t = I32; lbl = Public } ]
           [ { t = I32; lbl = Secret } ]))
     {
-      memories = [];
+      memory = None;
       globals =
         [
           {
@@ -917,7 +917,7 @@ let _ =
   test "function body has incorrect type (too few return values)"
     (neg_test (TypingError "function must leave 1 value on the stack (found 0)"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -943,7 +943,7 @@ let _ =
   test "function body has incorrect type (too many return values)"
     (neg_test (TypingError "function must leave 0 value on the stack (found 1)"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -951,6 +951,142 @@ let _ =
             ftype = FunType ([], Public, []);
             locals = [];
             body = [ WI_Const 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Good function call
+  (func (result i32)
+      i32.const 0
+  )
+  (func (result i32)
+      call 0
+      i32.const 1
+      i32.add
+  )
+*)
+
+let _ =
+  test "good function call" pos_test
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Const 0 ];
+            export_name = None;
+          };
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Call 0; WI_Const 1; WI_BinOp Add ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Call non-existing function
+  (func
+      call 5
+  )
+*)
+
+let _ =
+  test "call non-existing function"
+    (neg_test (TypingError "did not find function of index 5"))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Call 5 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Can't enter function due to Secret parameter flowing to Public arg
+  (global i32<Secret> (i32.const 0))
+  (func <Public> (param i32<Public>)
+      nop
+  )
+  (func <Public>
+      global.get ;; loads secret parameter for call
+      call 0
+  )
+*)
+
+let _ =
+  test "can't enter function due to Secret parameter flowing to Public arg"
+    (neg_test
+       (TypingError
+          "call needs values with types \226\138\145 {i32, Public} :: [] on \
+           the stack (found {i32, Secret} :: [])"))
+    {
+      memory = None;
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 0 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([ { t = I32; lbl = Public } ], Public, []);
+            locals = [];
+            body = [ WI_Nop ];
+            export_name = None;
+          };
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_GlobalGet 0; WI_Call 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Can't enter Public function with Secret pc
+  (func <Public>
+     nop
+  )
+  (func <Secret>
+      call 0
+  )
+*)
+
+let _ =
+  test "can't enter Public function with Secret pc"
+    (neg_test (err_call1 Public Secret))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Nop ];
+            export_name = None;
+          };
+          {
+            ftype = FunType ([], Secret, []);
+            locals = [];
+            body = [ WI_Call 0 ];
             export_name = None;
           };
         ];
@@ -970,7 +1106,7 @@ let _ =
 let _ =
   test "block-1" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1011,7 +1147,7 @@ let _ =
   test "type mismatch at end of block"
     (neg_test (TypingError "block must leave 0 values on the stack (found 1)"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1047,7 +1183,7 @@ let _ =
   test "type mismatch at end of function"
     (neg_test (TypingError "function must leave 1 value on the stack (found 3)"))
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1073,7 +1209,7 @@ let _ =
 let _ =
   test "func can get it's argument using local.get" pos_test
     {
-      memories = [];
+      memory = None;
       globals = [];
       functions =
         [
@@ -1085,6 +1221,182 @@ let _ =
                   [ { t = I32; lbl = Public } ] );
             locals = [];
             body = [ WI_LocalGet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test branch to end of current block
+
+  (module
+    (func
+    (param i32) (result i32)
+      block
+        br 0
+      end
+      i32.const 32
+    )
+  )
+*)
+let _ =
+  test "branch to end of current block" pos_test
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body = [ WI_Block (BlockType ([], []), [ WI_Br 0 ]); WI_Const 42 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test branch to the end of nested block typechecks
+
+  (module
+    (func
+    (param i32) (result i32)
+      block (result i32)
+        block
+          br 0
+        end
+        i32.const 42
+      end
+    )
+  )
+*)
+
+let _ =
+  test "br-2" pos_test
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_Block (BlockType ([], []), [ WI_Br 0 ]); WI_Const 42 ]
+                  );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test type mismatch in br, expected [i32] but got []
+
+  (module
+    (func
+    (param i32) (result i32)
+      block (result i32)
+        block
+          br 1
+        end
+        i32.const 42
+      end
+    )
+  )
+*)
+
+let _ =
+  test "type mismatch in br"
+    (neg_test (err_branch_stack_size 1 0))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_Block (BlockType ([], []), [ WI_Br 1 ]); WI_Const 42 ]
+                  );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Unconditionally branching outside a block,
+  or in general to an index that is higher
+  than the nesting depth of blocks
+
+  (module
+    (func
+      br 0
+    )
+  )
+*)
+
+let _ =
+  test "unconditional branching outside block"
+    (neg_test err_branch_outside_block)
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Br 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Unconditionally branching to an invalid index (negative)
+
+  (module
+    (func
+      block
+        br -1
+      end
+    )
+  )
+*)
+
+let _ =
+  test "unconditional branching to invalid index (negative)"
+    (neg_test (err_branch_index (-1) 0))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Block (BlockType ([], []), [ WI_Br (-1) ]) ];
             export_name = None;
           };
         ];

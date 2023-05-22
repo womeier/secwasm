@@ -45,12 +45,12 @@ type wasm_func = {
   export_name : string option; (* export name, should start with '$' *)
 }
 
-type wasm_memory = { min_size : int; max_size : int option } (* in #pages *)
+type wasm_memory = { size : int } (* in #pages *)
 
 type wasm_module = {
   globals : wasm_global list;
   functions : wasm_func list;
-  memories : wasm_memory list;
+  memory : wasm_memory option;
 }
 
 (************************* PRETTY PRINTING ************************************)
