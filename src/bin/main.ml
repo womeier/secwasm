@@ -40,18 +40,19 @@ let example1_module : wasm_module =
   (module
     (memory 1)
     (func (export "foo") (param i32) (result i32)
-      i32.const 0
+      i32.const STORE_ADDR
       local.get 0
       ;; store parameter at address 0
       store STORE_LABEL
-      i32.const 0
+      i32.const LOAD_ADDR
       ;; load it again
       load LOAD_LABEL
     )
   )
 *)
-let store_and_load_module (store_label : SimpleLattice.t)
-    (load_label : SimpleLattice.t) : wasm_module =
+let store_and_load_module (store_addr : int) (load_addr : int)
+    (store_label : SimpleLattice.t) (load_label : SimpleLattice.t) : wasm_module
+    =
   {
     memory = Some { size = 1 };
     globals = [];
@@ -66,10 +67,10 @@ let store_and_load_module (store_label : SimpleLattice.t)
           locals = [ { t = I32; lbl = Public } ];
           body =
             [
-              WI_Const 0;
+              WI_Const store_addr;
               WI_LocalGet 0;
               WI_Store store_label;
-              WI_Const 0;
+              WI_Const load_addr;
               WI_Load load_label;
             ];
           export_name = Some "foo";
@@ -77,10 +78,11 @@ let store_and_load_module (store_label : SimpleLattice.t)
       ];
   }
 
-let store_public_load_as_public = store_and_load_module Public Public
-let store_public_load_as_secret = store_and_load_module Public Secret
-let store_secret_load_as_public = store_and_load_module Secret Public
-let store_secret_load_as_secret = store_and_load_module Secret Secret
+let store_and_load_at_same_address = store_and_load_module 0 0
+let store_public_load_as_public = store_and_load_at_same_address Public Public
+let store_public_load_as_secret = store_and_load_at_same_address Public Secret
+let store_secret_load_as_public = store_and_load_at_same_address Secret Public
+let store_secret_load_as_secret = store_and_load_at_same_address Secret Secret
 
 (****** CMDLINE PARSING *******)
 
@@ -98,6 +100,16 @@ let set_module s =
   | "3" -> wmodule := Some store_public_load_as_secret (* Ok! *)
   | "4" -> wmodule := Some store_secret_load_as_public (* Should trap! *)
   | "5" -> wmodule := Some store_secret_load_as_secret (* Ok! *)
+  | "6" ->
+      (* Should trap! *)
+      wmodule := Some (store_and_load_module 0 1 Secret Public)
+  | "7" ->
+      (* Should trap! *)
+      wmodule := Some (store_and_load_module 0 2 Secret Public)
+  | "8" ->
+      (* Should trap! *)
+      wmodule := Some (store_and_load_module 0 3 Secret Public)
+  | "9" -> (* Ok! *) wmodule := Some (store_and_load_module 0 4 Secret Public)
   | _ -> ()
 
 let speclist =
