@@ -1,6 +1,6 @@
-(test
+(tests
  (libraries secwasm ounit2)
- (name test_secwasm))
+ (names test_secwasm test_solver test_typing))
 
 (env
  (dev
