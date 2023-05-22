@@ -192,6 +192,9 @@ let err_branch_stack_security_level l s =
         greater than %s"
        (print_st s) (str_l l))
 
+let err_branch_cond_nocond =
+  TypingError "conditional branch expected 1 value on the stack"
+
 let err_gamma_subtype g1 g2 =
   TypingError
     (Printf.sprintf
@@ -348,7 +351,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
             raise (err_branch_stack_size (List.length bt_out) (List.length st));
           let st, st' = split_at_index (List.length bt_out) st in
           if not (leq_stack st bt_out) then raise (err_branch_prefix bt_out st);
-          (* Check that pc ⊑ st *)
+          (* Check that pc ⊑ st_i for all i *)
           if not (List.for_all (fun v -> pc <<= v.lbl) st) then
             raise (err_branch_stack_security_level pc st);
           (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
@@ -356,7 +359,36 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           match lift pc ((st @ st', pc) :: g1) with
           | [] -> raise (InternalError "stack-of-stacks ill-formed")
           | (st'', pc') :: g1' -> (((st'', pc') :: g1') @ g2, c))
-      | WI_BrIf _ -> raise (NotImplemented "br_if"))
+      | WI_BrIf i -> (
+          match st with
+          | [] -> raise err_branch_cond_nocond
+          (* overwrite st with tail of st (first element split off), so the naming is the same as in WI_Br *)
+          | { t = _; lbl = lcond } :: st -> (
+              (* Check that
+                 1. we're in a block
+                 2. the branching index is valid *)
+              (match (i, List.length c.labels) with
+              | _, 0 -> raise err_branch_outside_block
+              | idx, labels_len ->
+                  if idx < 0 || idx >= labels_len then
+                    raise (err_branch_index idx (labels_len - 1)));
+              (* Find the return type of the block that we're branching to *)
+              let bt_out = lookup_label c i in
+              (* Check that the top of the stack matches *)
+              if List.length bt_out > List.length st then
+                raise
+                  (err_branch_stack_size (List.length bt_out) (List.length st));
+              let st, st' = split_at_index (List.length bt_out) st in
+              if not (leq_stack st bt_out) then
+                raise (err_branch_prefix bt_out st);
+              (* Check that pc ⊔ lcond ⊑ st_i for all i *)
+              if not (List.for_all (fun v -> pc <> lcond <<= v.lbl) st) then
+                raise (err_branch_stack_security_level pc st);
+              (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
+              let g1, g2 = split_at_index (i - 1) g' in
+              match lift (lcond <> pc) ((st @ st', pc) :: g1) with
+              | [] -> raise (InternalError "stack-of-stacks ill-formed")
+              | (st'', pc') :: g1' -> (((st'', pc') :: g1') @ g2, c))))
   | _ -> raise (InternalError "stack-of-stacks ill-formed")
 
 and check_seq ((g, c) : stack_of_stacks_type * context)
