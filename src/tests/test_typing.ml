@@ -6,6 +6,7 @@ module S = C.Solver
 open OUnit2
 
 let (let*) = C.SolverState.bind
+let (>>=) = C.SolverState.bind
 let return = C.SolverState.return
 
 let fold_left = C.fold_left
@@ -65,7 +66,7 @@ let test_instr name s =
     (let* pc = S.fresh_label_var in 
     let* l1 = S.fresh_label_var in 
     let* l2 = S.fresh_label_var in
-    let* lout = S.lub l1 l2 in 
+    let* lout = S.lub l1 l2 >>= S.lub pc in 
     let expected_output = ((lout :: st, pc ) :: gamma, ctx) in 
     let* output = TC.check_instr ((l1 :: l2 :: st, pc) :: gamma, ctx) (A.WI_BinOp A.Add) in 
     let* eo = to_values expected_output in 
