@@ -1436,6 +1436,103 @@ let _ =
         ];
     }
 
+(*
+  Test cond branch to end of current block
+
+  (module
+    (func
+    (param i32) (result i32)
+      block
+        i32.const 1
+        br_if 0
+      end
+      i32.const 32
+    )
+  )
+*)
+let _ =
+  test "cond branch to end of current block" pos_test
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body =
+              [
+                WI_Block (BlockType ([], []), [ WI_Const 1; WI_BrIf 0 ]);
+                WI_Const 42;
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Test cond branch no conditional to branch on
+
+  (module
+    (func
+      block
+        br_if 0
+      end
+    )
+  )
+*)
+let _ =
+  test "no condtional to branch on"
+    (neg_test (TypingError "conditional branch expected 1 value on the stack"))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Block (BlockType ([], []), [ WI_BrIf 0 ]) ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Conditional branching to an invalid index (negative)
+
+  (module
+    (func
+      block
+        i32.const 1
+        br -1
+      end
+    )
+  )
+*)
+
+let _ =
+  test "conditional branching to invalid index (negative)"
+    (neg_test (err_branch_index (-1) 0))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [ WI_Block (BlockType ([], []), [ WI_Const 1; WI_BrIf (-1) ]) ];
+            export_name = None;
+          };
+        ];
+    }
+
 (*  ================= End of tests ================== *)
 (*  Run suite! *)
 
