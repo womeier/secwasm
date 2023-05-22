@@ -702,7 +702,7 @@ let _ =
 *)
 let _ =
   test "block with simple param"
-    (neg_test (err_block1 1 0))
+    (neg_test (err_block1 false 1 0))
     {
       memory = None;
       globals = [];
@@ -734,7 +734,7 @@ let _ =
 *)
 let _ =
   test "block with simple param 2"
-    (neg_test (err_block2 1 0))
+    (neg_test (err_block2 false 1 0))
     {
       memory = None;
       globals = [];
@@ -773,7 +773,9 @@ let _ =
 let _ =
   test "block input stack incorrect security level"
     (neg_test
-       (err_block3 [ { t = I32; lbl = Public } ] [ { t = I32; lbl = Secret } ]))
+       (err_block3 false
+          [ { t = I32; lbl = Public } ]
+          [ { t = I32; lbl = Secret } ]))
     {
       memory = None;
       globals =
@@ -815,7 +817,9 @@ let _ =
 let _ =
   test "block output stack incorrect security level"
     (neg_test
-       (err_block4 [ { t = I32; lbl = Public } ] [ { t = I32; lbl = Secret } ]))
+       (err_block4 false
+          [ { t = I32; lbl = Public } ]
+          [ { t = I32; lbl = Secret } ]))
     {
       memory = None;
       globals =
@@ -853,7 +857,7 @@ let _ =
 *)
 let _ =
   test "function output stack incorrect length"
-    (neg_test (err_function1 1 0))
+    (neg_test (err_block2 true 1 0))
     {
       memory = None;
       globals = [];
@@ -880,7 +884,7 @@ let _ =
 let _ =
   test "function output stack incorrect security level"
     (neg_test
-       (err_function2
+       (err_block4 true
           [ { t = I32; lbl = Public } ]
           [ { t = I32; lbl = Secret } ]))
     {
@@ -915,7 +919,8 @@ let _ =
 *)
 let _ =
   test "function body has incorrect type (too few return values)"
-    (neg_test (TypingError "function must leave 1 value on the stack (found 0)"))
+    (neg_test
+       (TypingError "function must leave 1 values on the stack (found 0)"))
     {
       memory = None;
       globals = [];
@@ -941,7 +946,8 @@ let _ =
 *)
 let _ =
   test "function body has incorrect type (too many return values)"
-    (neg_test (TypingError "function must leave 0 value on the stack (found 1)"))
+    (neg_test
+       (TypingError "function must leave 0 values on the stack (found 1)"))
     {
       memory = None;
       globals = [];
@@ -1181,7 +1187,8 @@ let _ =
 
 let _ =
   test "type mismatch at end of function"
-    (neg_test (TypingError "function must leave 1 value on the stack (found 3)"))
+    (neg_test
+       (TypingError "function must leave 1 values on the stack (found 3)"))
     {
       memory = None;
       globals = [];
@@ -1345,9 +1352,7 @@ let _ =
     }
 
 (*
-  Unconditionally branching outside a block,
-  or in general to an index that is higher
-  than the nesting depth of blocks
+  Unconditionally branching outside the implicit function body block
 
   (module
     (func
@@ -1357,8 +1362,7 @@ let _ =
 *)
 
 let _ =
-  test "unconditional branching outside block"
-    (neg_test err_branch_outside_block)
+  test "unconditional branching outside implicit function block" pos_test
     {
       memory = None;
       globals = [];
@@ -1368,6 +1372,36 @@ let _ =
             ftype = FunType ([], Public, []);
             locals = [];
             body = [ WI_Br 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Unconditionally branching outside a block,
+  or in general to an index that is higher
+  than the nesting depth of blocks
+
+  (module
+    (func
+      br 1
+    )
+  )
+*)
+
+let _ =
+  test "unconditional branching outside block"
+    (neg_test
+       (TypingError "branching to index 1, valid indices range from 0 to 0"))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Br 1 ];
             export_name = None;
           };
         ];
@@ -1387,7 +1421,7 @@ let _ =
 
 let _ =
   test "unconditional branching to invalid index (negative)"
-    (neg_test (err_branch_index (-1) 0))
+    (neg_test (err_branch_index (-1) 1))
     {
       memory = None;
       globals = [];
