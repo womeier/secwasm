@@ -62,6 +62,23 @@ let pp_labeled_type (t : labeled_value_type) =
 
 let nl = "\n"
 
+let pp_block_type (BlockType (bt_in, bt_out)) =
+  let params =
+    if List.length bt_in > 0 then
+      " (param"
+      ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" bt_in
+      ^ ")"
+    else ""
+  in
+  let result =
+    if List.length bt_out > 0 then
+      " (param"
+      ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" bt_out
+      ^ ")"
+    else ""
+  in
+  params ^ result
+
 let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   let pp_instructions (indent' : int) (instructions : wasm_instruction list) =
     List.fold_left
@@ -95,7 +112,8 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_GlobalSet idx -> "global.set " ^ Int.to_string idx
   | WI_Load _ -> "i32.load"
   | WI_Store _ -> "i32.store"
-  | WI_Block (_, b) -> "(block " ^ nl ^ pp_instructions (indent + 2) b
+  | WI_Block (t, b) ->
+      "(block " ^ pp_block_type t ^ nl ^ pp_instructions (indent + 2) b
   | WI_Br idx -> "br " ^ Int.to_string idx
   | WI_BrIf idx -> "br_if " ^ Int.to_string idx
 
