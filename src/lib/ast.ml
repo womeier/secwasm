@@ -72,7 +72,7 @@ let pp_block_type (BlockType (bt_in, bt_out)) =
   in
   let result =
     if List.length bt_out > 0 then
-      " (param"
+      " (result"
       ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" bt_out
       ^ ")"
     else ""
@@ -113,7 +113,9 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_Load _ -> "i32.load"
   | WI_Store _ -> "i32.store"
   | WI_Block (t, b) ->
-      "(block " ^ pp_block_type t ^ nl ^ pp_instructions (indent + 2) b
+      "block " ^ pp_block_type t ^ nl
+      ^ pp_instructions (indent + 2) b
+      ^ spaces indent ^ "end"
   | WI_Br idx -> "br " ^ Int.to_string idx
   | WI_BrIf idx -> "br_if " ^ Int.to_string idx
 
@@ -148,8 +150,13 @@ let pp_function (f : wasm_func) =
   in
   "(func" ^ export ^ params ^ result ^ nl ^ locals ^ nl ^ body ^ nl ^ ")"
 
+let pp_memory (m : wasm_memory option) =
+  match m with
+  | None -> ""
+  | Some mem -> "(memory " ^ Int.to_string mem.size ^ ")"
+
 let pp_module (m : wasm_module) =
   (* TODO: memory, globals, anything else? *)
-  "(module" ^ nl
+  "(module" ^ nl ^ pp_memory m.memory ^ nl
   ^ List.fold_left (fun _s f -> _s ^ nl ^ pp_function f) "" m.functions
   ^ nl ^ ")"

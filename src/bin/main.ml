@@ -1,6 +1,7 @@
 open Secwasm.Ast
 open Secwasm.Type_check
 open Secwasm.Dynamic_check
+open Secwasm.Sec
 
 let example1_module : wasm_module =
   {
@@ -35,20 +36,51 @@ let example1_module : wasm_module =
       ];
   }
 
-let example2_module : wasm_module =
+(*
+  (module
+    (memory 1)
+    (func (export "foo") (param i32) (result i32)
+      i32.const 0
+      local.get 0
+      ;; store parameter at address 0
+      store STORE_LABEL
+      i32.const 0
+      ;; load it again
+      load LOAD_LABEL
+    )
+  )
+*)
+let store_and_load_module (store_label : SimpleLattice.t)
+    (load_label : SimpleLattice.t) : wasm_module =
   {
     memory = Some { size = 1 };
     globals = [];
     functions =
       [
         {
-          ftype = FunType ([], Public, []);
+          ftype =
+            FunType
+              ( [ { t = I32; lbl = Public } ],
+                Public,
+                [ { t = I32; lbl = Public } ] );
           locals = [ { t = I32; lbl = Public } ];
-          body = [ WI_Const 0; WI_Const 42; WI_Store Public ];
+          body =
+            [
+              WI_Const 0;
+              WI_LocalGet 0;
+              WI_Store store_label;
+              WI_Const 0;
+              WI_Load load_label;
+            ];
           export_name = Some "foo";
         };
       ];
   }
+
+let store_public_load_as_public = store_and_load_module Public Public
+let store_public_load_as_secret = store_and_load_module Public Secret
+let store_secret_load_as_public = store_and_load_module Secret Public
+let store_secret_load_as_secret = store_and_load_module Secret Secret
 
 (****** CMDLINE PARSING *******)
 
@@ -62,7 +94,10 @@ let set_module s =
   Printf.fprintf stdout "using test module: %s\n" s;
   match s with
   | "1" -> wmodule := Some example1_module
-  | "2" -> wmodule := Some example2_module
+  | "2" -> wmodule := Some store_public_load_as_public (* Ok! *)
+  | "3" -> wmodule := Some store_public_load_as_secret (* Ok! *)
+  | "4" -> wmodule := Some store_secret_load_as_public (* Should trap! *)
+  | "5" -> wmodule := Some store_secret_load_as_secret (* Ok! *)
   | _ -> ()
 
 let speclist =
