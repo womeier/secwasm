@@ -390,6 +390,8 @@ let type_check_function (c : context) (f : wasm_func) =
   let { ftype = FunType (ft_in, l, ft_out); locals; body; _ } = f in
   let c' = { c with locals = ft_in @ locals } in
   let g_init = [ ([], l) ] in
+  (* Note: in the paper they model this by a block of type [] -> [],
+     this is equivalent and more practical *)
   type_check_block (g_init, c') (BlockType ([], ft_out), body) true
 
 let type_check_module (m : wasm_module) =
