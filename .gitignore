@@ -32,6 +32,7 @@ _opam/
 
 # WASM
 *.wasm
+testing/examples/dyn-check-example.wat
 
 .DS_Store
 .vscode/
