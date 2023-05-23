@@ -9,7 +9,7 @@ type labeled_value_type = { t : value_type; lbl : SimpleLattice.t }
 type stack_type = labeled_value_type list
 type fun_type = FunType of stack_type * SimpleLattice.t * stack_type
 type block_type = BlockType of stack_type * stack_type
-type binop = Add | Eq
+type binop = Add | Eq | Mul | Sub | Shr_u | Shl | And | Or
 
 [@@@ocamlformat "disable"]
 
@@ -62,6 +62,23 @@ let pp_labeled_type (t : labeled_value_type) =
 
 let nl = "\n"
 
+let pp_block_type (BlockType (bt_in, bt_out)) =
+  let params =
+    if List.length bt_in > 0 then
+      " (param"
+      ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" bt_in
+      ^ ")"
+    else ""
+  in
+  let result =
+    if List.length bt_out > 0 then
+      " (result"
+      ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" bt_out
+      ^ ")"
+    else ""
+  in
+  params ^ result
+
 let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   let pp_instructions (indent' : int) (instructions : wasm_instruction list) =
     List.fold_left
@@ -80,7 +97,13 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_Nop -> "nop"
   | WI_Const v -> "i32.const " ^ Int.to_string v
   | WI_BinOp Add -> "i32.add"
+  | WI_BinOp Mul -> "i32.mul"
   | WI_BinOp Eq -> "i32.eq"
+  | WI_BinOp Sub -> "i32.sub"
+  | WI_BinOp Shr_u -> "i32.shr_u"
+  | WI_BinOp Shl -> "i32.shl"
+  | WI_BinOp And -> "i32.and"
+  | WI_BinOp Or -> "i32.or"
   | WI_Call idx -> "call " ^ Int.to_string idx
   | WI_Drop -> "drop"
   | WI_LocalGet idx -> "local.get " ^ Int.to_string idx
@@ -89,7 +112,10 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_GlobalSet idx -> "global.set " ^ Int.to_string idx
   | WI_Load _ -> "i32.load"
   | WI_Store _ -> "i32.store"
-  | WI_Block (_, b) -> "(block " ^ nl ^ pp_instructions (indent + 2) b
+  | WI_Block (t, b) ->
+      "block " ^ pp_block_type t ^ nl
+      ^ pp_instructions (indent + 2) b
+      ^ spaces indent ^ "end"
   | WI_Br idx -> "br " ^ Int.to_string idx
   | WI_BrIf idx -> "br_if " ^ Int.to_string idx
 
@@ -124,8 +150,13 @@ let pp_function (f : wasm_func) =
   in
   "(func" ^ export ^ params ^ result ^ nl ^ locals ^ nl ^ body ^ nl ^ ")"
 
+let pp_memory (m : wasm_memory option) =
+  match m with
+  | None -> ""
+  | Some mem -> "(memory " ^ Int.to_string mem.size ^ ")"
+
 let pp_module (m : wasm_module) =
   (* TODO: memory, globals, anything else? *)
-  "(module" ^ nl
+  "(module" ^ nl ^ pp_memory m.memory ^ nl
   ^ List.fold_left (fun _s f -> _s ^ nl ^ pp_function f) "" m.functions
   ^ nl ^ ")"
