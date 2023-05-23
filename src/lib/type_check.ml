@@ -1,9 +1,3 @@
-(*
-   TODO:
-   - Fix lattice to allow arbitrary lattice
-   - Figure out how to pass around typing context and stack-of-stacks
-*)
-
 open Ast
 open Sec
 
