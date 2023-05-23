@@ -10,4 +10,6 @@
 - Ocaml formatting tool: `opam pin add ocamlformat 0.21.0` `opam install ocamlformat`
 - Pre-commit hook to ensure formatting: `pip install pre-commit` then in the root repo: `pre-commit install`
 - Webassembly binary toolkit: `wabt`, provides `wat2wasm` and `wasm2wat` among others
-- Nodejs
+- Nodejs:
+  - known to work with version 18, 19
+  - known to not work with version 12
