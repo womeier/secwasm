@@ -124,23 +124,28 @@ let err_store2 l1 l2 l3 l4 =
        "store expected pc ⊔ la ⊔ lv ⊑ lm but was pc=%s, la=%s, lv=%s, lm=%s"
        (str_l l1) (str_l l2) (str_l l3) (str_l l4))
 
-let err_block1 i1 i2 =
+let err_block1 is_function_body i1 i2 =
+  let block = if is_function_body then "function" else "block" in
   TypingError
-    (Printf.sprintf "block needs %d values on the stack (found %d)" i1 i2)
+    (Printf.sprintf "%s needs %d values on the stack (found %d)" block i1 i2)
 
-let err_block2 i1 i2 =
+let err_block2 is_function_body i1 i2 =
+  let block = if is_function_body then "function" else "block" in
   TypingError
-    (Printf.sprintf "block must leave %d values on the stack (found %d)" i1 i2)
+    (Printf.sprintf "%s must leave %d values on the stack (found %d)" block i1
+       i2)
 
-let err_block3 s1 s2 =
+let err_block3 is_function_body s1 s2 =
+  let block = if is_function_body then "function" else "block" in
   TypingError
-    (Printf.sprintf "block needs values with types ⊑ %s on the stack (found %s)"
-       (print_st s1) (print_st s2))
+    (Printf.sprintf "%s needs values with types ⊑ %s on the stack (found %s)"
+       block (print_st s1) (print_st s2))
 
-let err_block4 s1 s2 =
+let err_block4 is_function_body s1 s2 =
+  let block = if is_function_body then "function" else "block" in
   TypingError
     (Printf.sprintf
-       "block must leave values with types ⊑ %s on the stack (found %s)"
+       "%s must leave values with types ⊑ %s on the stack (found %s)" block
        (print_st s1) (print_st s2))
 
 let err_call1 l1 l2 =
@@ -155,16 +160,6 @@ let err_call2 i1 i2 =
 let err_call3 s1 s2 =
   TypingError
     (Printf.sprintf "call needs values with types ⊑ %s on the stack (found %s)"
-       (print_st s1) (print_st s2))
-
-let err_function1 i1 i2 =
-  TypingError
-    (Printf.sprintf "function must leave %d value on the stack (found %d)" i1 i2)
-
-let err_function2 s1 s2 =
-  TypingError
-    (Printf.sprintf
-       "function must leave values with types ⊑ %s on the stack (found %s)"
        (print_st s1) (print_st s2))
 
 let err_branch_outside_block =
@@ -331,7 +326,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
                     raise (err_store2 pc la lv lm);
                   ((st', pc) :: g', c)
               | _ -> raise err_store_addrexists))
-      | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps)
+      | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps) false
       | WI_Br i -> (
           (* Check that
              1. we're in a block
@@ -364,26 +359,30 @@ and check_seq ((g, c) : stack_of_stacks_type * context)
   List.fold_left check_instr (g, c) seq
 
 and type_check_block ((g, c) : stack_of_stacks_type * context)
-    ((BlockType (bt_in, bt_out), instrs) : block_type * wasm_instruction list) =
+    ((BlockType (bt_in, bt_out), instrs) : block_type * wasm_instruction list)
+    (is_func_body : bool) =
   match g with
   | [] -> raise (InternalError "blocks: stack-of-stacks ill-formed")
   | (stack, pc) :: g -> (
       let c' = { c with labels = bt_out :: c.labels } in
       if List.length bt_in > List.length stack then
-        raise (err_block1 (List.length bt_in) (List.length stack));
+        raise (err_block1 is_func_body (List.length bt_in) (List.length stack));
       (* naming: bt_in and bt_out refer to tau1 and tau2 that are annotated
          tau1 refers to the type actually found, tau2 to the type that is computed based on the actual inputs
       *)
       let tau1, st = split_at_index (List.length bt_in) stack in
       (* actual input types <= labeled input types *)
-      if not (leq_stack tau1 bt_in) then raise (err_block3 bt_in tau1);
+      if not (leq_stack tau1 bt_in) then
+        raise (err_block3 is_func_body bt_in tau1);
       (* check expression with updated stack, context *)
       match check_seq ((tau1, pc) :: (st, pc) :: g, c') instrs with
       (* computed pc' is discarded *)
       | (tau2, _) :: (st', pc'') :: g', _ ->
           if List.length tau2 != List.length bt_out then
-            raise (err_block2 (List.length bt_out) (List.length tau2));
-          if not (leq_stack tau2 bt_out) then raise (err_block4 bt_out tau2);
+            raise
+              (err_block2 is_func_body (List.length bt_out) (List.length tau2));
+          if not (leq_stack tau2 bt_out) then
+            raise (err_block4 is_func_body bt_out tau2);
           ((bt_out @ st', pc <> pc'') :: g', c)
       | _ -> raise (InternalError "blocks: stack-of-stacks ill-formed"))
 
@@ -391,14 +390,9 @@ let type_check_function (c : context) (f : wasm_func) =
   let { ftype = FunType (ft_in, l, ft_out); locals; body; _ } = f in
   let c' = { c with locals = ft_in @ locals } in
   let g_init = [ ([], l) ] in
-  match check_seq (g_init, c') body with
-  | [ (st, _pc) ], _ ->
-      if List.length ft_out != List.length st then
-        raise (err_function1 (List.length ft_out) (List.length st))
-      else
-        let st', _ = split_at_index (List.length ft_out) st in
-        if not (leq_stack st' ft_out) then raise (err_function2 ft_out st)
-  | _ -> raise (InternalError "function: stack-of-stacks ill-formed")
+  (* Note: in the paper they model this by a block of type [] -> [],
+     this is equivalent and more practical *)
+  type_check_block (g_init, c') (BlockType ([], ft_out), body) true
 
 let type_check_module (m : wasm_module) =
   let c =
