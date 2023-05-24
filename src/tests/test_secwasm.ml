@@ -1406,6 +1406,7 @@ let _ =
           };
         ];
     }
+
 (*
   Test branch to the end of nested block typechecks
 
@@ -1679,6 +1680,94 @@ let _ =
     }
 
 (*
+  Unconditional branch output-val has higher security level than block result security level
+
+  (module
+    (global i32<Secret> (i32.const 42))
+    (func
+      (block ϵ -> i32<Public>
+        global.get 0
+      end)
+    )
+  )
+*)
+let _ =
+  test "unconditional branch: output stack incorrect security level"
+    (neg_test
+       (TypingError
+          "branching expected {i32, Public} :: [] to be a prefix of the stack \
+           ({i32, Secret} :: [])"))
+    {
+      memory = None;
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 42 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_GlobalGet 0; WI_Br 0 ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Conditional branch output-val has higher security level than block result security level
+
+  (module
+    (global i32<Secret> (i32.const 42))
+    (func
+      (block ϵ -> i32<Public>
+        global.get 0
+      end)
+    )
+  )
+*)
+let _ =
+  test "conditional branch: output stack incorrect security level"
+    (neg_test
+       (TypingError
+          "branching expected {i32, Public} :: [] to be a prefix of the stack \
+           ({i32, Secret} :: [])"))
+    {
+      memory = None;
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 42 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_GlobalGet 0; WI_Const 0; WI_BrIf 0 ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Conditional branching to an invalid index (negative)
 
   (module
@@ -1704,6 +1793,36 @@ let _ =
             locals = [];
             body =
               [ WI_Block (BlockType ([], []), [ WI_Const 1; WI_BrIf (-1) ]) ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Conditional branching to an invalid index (too large)
+
+  (module
+    (func
+      block
+        i32.const 1
+        br 2
+      end
+    )
+  )
+*)
+
+let _ =
+  test "conditional branching to invalid index (too large)"
+    (neg_test (err_branch_index 2 1))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Block (BlockType ([], []), [ WI_Const 1; WI_BrIf 2 ]) ];
             export_name = None;
           };
         ];
