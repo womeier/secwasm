@@ -156,9 +156,6 @@ let err_call3 s1 s2 =
     (Printf.sprintf "call needs values with types ⊑ %s on the stack (found %s)"
        (print_st s1) (print_st s2))
 
-let err_branch_outside_block =
-  TypingError (Printf.sprintf "branching outside of a block")
-
 let err_branch_index idx max_idx =
   TypingError
     (Printf.sprintf "branching to index %i, valid indices range from 0 to %i"
@@ -329,8 +326,8 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
              1. we're in a block
              2. the branching index is valid *)
           (match (i, List.length c.labels) with
-          | _, 0 -> raise err_branch_outside_block
           | idx, labels_len ->
+              (* labels_len always > 0 *)
               if idx < 0 || idx >= labels_len then
                 raise (err_branch_index idx (labels_len - 1)));
           (* Find the return type of the block that we're branching to *)
@@ -357,8 +354,8 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
                  1. we're in a block
                  2. the branching index is valid *)
               (match (i, List.length c.labels) with
-              | _, 0 -> raise err_branch_outside_block
               | idx, labels_len ->
+                  (* labels_len always > 0 *)
                   if idx < 0 || idx >= labels_len then
                     raise (err_branch_index idx (labels_len - 1)));
               (* Find the return type of the block that we're branching to *)
