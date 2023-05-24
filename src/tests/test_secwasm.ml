@@ -1452,7 +1452,7 @@ let _ =
 
 let _ =
   test "unconditional branching to invalid index (negative)"
-    (neg_test (err_branch_index (-1) 0))
+    (neg_test (err_branch_index (-1) 1))
     {
       memory = None;
       globals = [];
@@ -1548,7 +1548,7 @@ let _ =
 
 let _ =
   test "conditional branching to invalid index (negative)"
-    (neg_test (err_branch_index (-1) 0))
+    (neg_test (err_branch_index (-1) 1))
     {
       memory = None;
       globals = [];
