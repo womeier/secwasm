@@ -266,6 +266,33 @@ let _ =
     }
 
 (*
+  Set global fails (no variable provided)
+
+  (module
+    (global i32 (i32.const 0))
+    (func
+      global.set 0
+    )
+  )
+*)
+let _ =
+  test "local.set no variable provided"
+    (neg_test (TypingError "global.set expected 1 value on the stack"))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [ { t = I32; lbl = Public } ];
+            body = [ WI_GlobalSet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Set a non-mut public global variable
 
   (module
@@ -401,10 +428,37 @@ let _ =
     }
 
 (*
+  Set local fails (no variable provided)
+
+  (module
+    (func
+      (local i32)
+      local.set 0
+    )
+  )
+*)
+let _ =
+  test "local.set no variable provided"
+    (neg_test (TypingError "local.set expected 1 value on the stack"))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [ { t = I32; lbl = Public } ];
+            body = [ WI_LocalSet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Forbidden direct flow to public local
 
   (module
-    (global i32) <Secret>
+    (global i32 (i32.const 0)) <Secret>
     (func
       (local i32) <Public>
       global.get 0
@@ -444,7 +498,7 @@ let _ =
 
   (module
     (memory 1)
-    (func
+    (func (result i32)
       i32.const 0
       i32.load
     )
@@ -461,6 +515,33 @@ let _ =
             ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
             locals = [];
             body = [ WI_Const 0; WI_Load Public ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Load fails when no addr provided
+
+  (module
+    (memory 1)
+    (func (result i32)
+      i32.load
+    )
+  )
+*)
+let _ =
+  test "load"
+    (neg_test (TypingError "load expected 1 value on the stack"))
+    {
+      memory = Some { size = 1 };
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Load Public ];
             export_name = None;
           };
         ];
@@ -553,7 +634,7 @@ let _ =
 
   (module
     (memory 1)
-    (global i32<Secret>)
+    (global i32 (i32.const 0)) <Secret>
     (func
       i32.const 0
       global.get 0
@@ -583,6 +664,33 @@ let _ =
             ftype = FunType ([], Public, []);
             locals = [];
             body = [ WI_Const 0; WI_GlobalGet 0; WI_Store Public ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Store fails when not enough args provided
+
+  (module
+    (memory 1)
+    (func (result i32)
+      i32.store
+    )
+  )
+*)
+let _ =
+  test "load"
+    (neg_test (TypingError "store expected 2 values on the stack"))
+    {
+      memory = Some { size = 1 };
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Store Public ];
             export_name = None;
           };
         ];
@@ -1717,6 +1825,54 @@ let _ =
                 WI_Block
                   ( BlockType ([], [ { t = I32; lbl = Public } ]),
                     [ WI_GlobalGet 0; WI_Br 0 ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Conditional branch on secret leaks information
+
+  (module
+    (global i32<Secret> (i32.const 42))
+    (func
+      i32.const 0
+      (block i32 -> i32
+        global.get 0
+        br_if 0
+      end)
+      drop
+    )
+  )
+*)
+let _ =
+  test "conditional branch: branching on secret value"
+    (neg_test
+       (PrivacyViolation
+          "branching expected security level of all values on stack {i32, \
+           Public} :: [] to be strictly greater than Public"))
+    {
+      memory = None;
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 42 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_Const 0; WI_GlobalGet 0; WI_BrIf 0 ] );
+                WI_Drop;
               ];
             export_name = None;
           };
