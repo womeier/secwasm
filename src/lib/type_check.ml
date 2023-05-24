@@ -331,7 +331,8 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
             raise (err_branch_stack_size (List.length bt_out) (List.length st));
           let st, st' = split_at_index (List.length bt_out) st in
           if not (leq_stack st bt_out) then raise (err_branch_prefix bt_out st);
-          (* Check that pc ⊑ st_i for all i *)
+          (* Check that pc ⊑ st_i for all i,
+             this case is not reached because the variables in st are tainted by the pc, checked above *)
           if not (List.for_all (fun v -> pc <<= v.lbl) st) then
             raise (err_branch_stack_security_level pc st);
           (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
