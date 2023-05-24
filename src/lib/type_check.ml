@@ -110,7 +110,7 @@ let err_localset3 = TypingError "local.set expected 1 value on the stack"
 let err_load_nomemory = TypingError "load expected memory in the context"
 let err_load_addrexists = TypingError "load expected 1 value on the stack"
 let err_store_nomemory = TypingError "store expected memory in the context"
-let err_store_addrexists = TypingError "store expected 1 value on the stack"
+let err_store_addvalexists = TypingError "store expected 2 values on the stack"
 
 let err_store2 l1 l2 l3 l4 =
   PrivacyViolation
@@ -172,20 +172,14 @@ let err_branch_prefix s1 s2 =
        (print_st s1) (print_st s2))
 
 let err_branch_stack_security_level l s =
-  TypingError
+  PrivacyViolation
     (Printf.sprintf
        "branching expected security level of all values on stack %s to be \
-        greater than %s"
+        strictly greater than %s"
        (print_st s) (str_l l))
 
 let err_branch_cond_nocond =
   TypingError "conditional branch expected 1 value on the stack"
-
-let err_gamma_subtype g1 g2 =
-  TypingError
-    (Printf.sprintf
-       "expected gamma %s to have lower security level than gamma' %s"
-       (print_g g1) (print_g g2))
 
 (* ======= Type checking ======= *)
 
@@ -319,7 +313,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
                   if not (pc <> la <> lv <<= lm) then
                     raise (err_store2 pc la lv lm);
                   ((st', pc) :: g', c)
-              | _ -> raise err_store_addrexists))
+              | _ -> raise err_store_addvalexists))
       | WI_Block (bt, exps) -> type_check_block (g, c) (bt, exps) false
       | WI_Br i -> (
           (* Check that
