@@ -401,6 +401,45 @@ let _ =
     }
 
 (*
+  Forbidden direct flow to public local
+
+  (module
+    (global i32) <Secret>
+    (func
+      (local i32) <Public>
+      global.get 0
+      local.set 0
+    )
+  )
+*)
+let _ =
+  test "forbidden flow to public local"
+    (neg_test
+       (PrivacyViolation
+          "local.set expected pc \226\138\148 l \226\138\145 l' but was \
+           pc=Public, l=Secret, l'=Public"))
+    {
+      memory = None;
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 0 ];
+            mut = false;
+          };
+        ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [ { t = I32; lbl = Public } ];
+            body = [ WI_GlobalGet 0; WI_LocalSet 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Load from memory
 
   (module
@@ -997,6 +1036,43 @@ let _ =
     }
 
 (*
+  Function call - not enough arguments provided
+  (func (param i32) (result i32)
+      i32.const 0
+  )
+  (func (result i32)
+      call 0
+  )
+*)
+
+let _ =
+  test "call: not enough arguments provided"
+    (neg_test (TypingError "call needs 1 values on the stack (found 0)"))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype =
+              FunType
+                ( [ { t = I32; lbl = Public } ],
+                  Public,
+                  [ { t = I32; lbl = Public } ] );
+            locals = [];
+            body = [ WI_Const 0 ];
+            export_name = None;
+          };
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body = [ WI_Call 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Call non-existing function
   (func
       call 5
@@ -1273,7 +1349,7 @@ let _ =
       block
         br 0
       end
-      i32.const 32
+      i32.const 42
     )
   )
 *)
@@ -1297,6 +1373,39 @@ let _ =
         ];
     }
 
+(*
+  Bad unconditional branch not enough arguments to return
+
+  (module
+    (func
+    (param i32)
+      block ([] -> [i32])
+        br 0
+      end
+    )
+  )
+*)
+let _ =
+  test "bad unconditional branch not enough arguments to return"
+    (neg_test
+       (TypingError "branching expected at least 1 values on stack (found 0)"))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body =
+              [
+                WI_Block
+                  (BlockType ([], [ { t = I32; lbl = Public } ]), [ WI_Br 0 ]);
+              ];
+            export_name = None;
+          };
+        ];
+    }
 (*
   Test branch to the end of nested block typechecks
 
@@ -1528,6 +1637,42 @@ let _ =
             ftype = FunType ([], Public, []);
             locals = [];
             body = [ WI_Block (BlockType ([], []), [ WI_BrIf 0 ]) ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
+  Bad conditional branch not enough arguments to return
+
+  (module
+    (func
+    (param i32)
+      block ([] -> [i32])
+        i32.const 0
+        br_if 0
+      end
+    )
+  )
+*)
+let _ =
+  test "bad conditional branch not enough arguments to return"
+    (neg_test
+       (TypingError "branching expected at least 1 values on stack (found 0)"))
+    {
+      memory = None;
+      globals = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Public } ]);
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Public } ]),
+                    [ WI_Const 0; WI_BrIf 0 ] );
+              ];
             export_name = None;
           };
         ];
