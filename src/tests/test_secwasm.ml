@@ -38,6 +38,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -65,6 +66,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -90,6 +92,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -115,6 +118,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -141,6 +145,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -166,6 +171,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -193,6 +199,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -220,6 +227,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -254,6 +262,7 @@ let _ =
             mut = true;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -281,6 +290,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -316,6 +326,7 @@ let _ =
             mut = false;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -343,6 +354,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -389,6 +401,7 @@ let _ =
             mut = true;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -416,6 +429,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -443,6 +457,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -482,6 +497,7 @@ let _ =
             mut = false;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -509,6 +525,7 @@ let _ =
     {
       memory = Some { size = 1 };
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -536,6 +553,7 @@ let _ =
     {
       memory = Some { size = 1 };
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -563,6 +581,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -590,6 +609,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -618,6 +638,7 @@ let _ =
     {
       memory = Some { size = 1 };
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -658,6 +679,7 @@ let _ =
             mut = false;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -685,6 +707,7 @@ let _ =
     {
       memory = Some { size = 1 };
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -731,6 +754,7 @@ let _ =
             mut = true;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -758,6 +782,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -787,6 +812,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -820,6 +846,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -853,6 +880,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -885,6 +913,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -933,6 +962,7 @@ let _ =
             mut = false;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -977,6 +1007,7 @@ let _ =
             mut = false;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -1008,6 +1039,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1044,6 +1076,7 @@ let _ =
             mut = false;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -1071,6 +1104,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1098,6 +1132,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1126,6 +1161,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1159,6 +1195,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1193,6 +1230,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1232,6 +1270,7 @@ let _ =
             mut = false;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -1265,6 +1304,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1298,6 +1338,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1339,6 +1380,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1376,6 +1418,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1403,6 +1446,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1433,6 +1477,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1466,6 +1511,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1500,6 +1546,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1536,6 +1583,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1579,6 +1627,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1615,6 +1664,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1645,6 +1695,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1674,6 +1725,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1704,6 +1756,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1740,6 +1793,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1771,6 +1825,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1815,6 +1870,7 @@ let _ =
             mut = false;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -1862,6 +1918,7 @@ let _ =
             mut = false;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -1907,6 +1964,7 @@ let _ =
             mut = false;
           };
         ];
+      function_imports = [];
       functions =
         [
           {
@@ -1942,6 +2000,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {
@@ -1973,6 +2032,7 @@ let _ =
     {
       memory = None;
       globals = [];
+      function_imports = [];
       functions =
         [
           {

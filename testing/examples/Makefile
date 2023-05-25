@@ -3,6 +3,7 @@ all:
 	@echo "  make run-add"
 	@echo "  make run-mem"
 	@echo "  make run-bintree"
+	@echo "  make run-bubblesort"
 
 %.wasm: %.wat
 	wat2wasm $<
@@ -18,6 +19,10 @@ run-add: add.wasm
 run-mem: mem.wasm
 	@echo "Running mem.{js, wasm} with node..."
 	@node mem.js
+
+run-bubblesort: bubblesort.wasm
+	@echo "Running bubblesort.{js, wasm} with node..."
+	@node  --stack-size=10000000 bubblesort.js
 
 clean:
 	rm -r *.wasm
