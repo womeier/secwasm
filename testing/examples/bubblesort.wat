@@ -23,9 +23,7 @@
         local.get $remaining
         i32.const 0
         i32.eq
-        if
-          return
-        end
+        br_if 0 ;; return
 
         local.get $start_ptr
         call $get_random
@@ -59,9 +57,7 @@
         local.get $idx
         global.get $length
         i32.ge_s
-        if
-          return
-        end
+        br_if 0 ;; return
 
         i32.const 32 ;; space
         call $write_char
@@ -85,25 +81,25 @@
         call $sort_helper
 
         ;; check if something changed
-        i32.const 1
+        i32.const 0
         i32.eq
-        if
-          call $sort
-        end
+        br_if 0 ;; return
+        call $sort
   )
 
-  (func $sort_helper (param $idx i32) (param $changed i32) (result i32) ;; ret: changed:1, unchanged:0
+  (func $sort_helper (param $idx i32) (param $changed i32) (result i32) ;; ret: changed: 1, unchanged: 0
         (local $ptr_a i32) (local $ptr_b i32) (local $tmp i32)
-      global.get $length
-      i32.const 2
-      i32.sub
-      local.get $idx
-      i32.lt_s
-
-      ;; length - 2: last i to test and swap arr[i] and arr[i+1]
-      if
+      block
+        ;; length - 2: last i to test and swap arr[i] and arr[i+1]
         local.get $changed
-        return
+
+        global.get $length
+        i32.const 2
+        i32.sub
+        local.get $idx
+        i32.lt_s
+        br_if 1 ;; return
+        drop
       end
 
       ;; swap if necessary
@@ -121,13 +117,14 @@
       i32.mul
       local.set $ptr_b
 
-      local.get $ptr_a
-      i32.load
-      local.get $ptr_b
-      i32.load
-      i32.gt_s
+      block
+        local.get $ptr_a
+        i32.load
+        local.get $ptr_b
+        i32.load
+        i32.le_s
+        br_if 0
 
-      if
         ;; tmp := arr[a]
         local.get $ptr_a
         i32.load
