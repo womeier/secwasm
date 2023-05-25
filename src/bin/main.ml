@@ -7,6 +7,7 @@ let example1_module : wasm_module =
   {
     memory = None;
     globals = [];
+    function_imports = [];
     functions =
       [
         {
@@ -56,6 +57,7 @@ let store_and_load_module (store_addr : int) (load_addr : int)
   {
     memory = Some { size = 1 };
     globals = [];
+    function_imports = [];
     functions =
       [
         {

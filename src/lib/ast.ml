@@ -50,6 +50,7 @@ type wasm_memory = { size : int } (* in #pages *)
 type wasm_module = {
   globals : wasm_global list;
   functions : wasm_func list;
+  function_imports : (string * string * fun_type) list;
   memory : wasm_memory option;
 }
 
@@ -119,28 +120,36 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_Br idx -> "br " ^ Int.to_string idx
   | WI_BrIf idx -> "br_if " ^ Int.to_string idx
 
-let pp_function (f : wasm_func) =
-  let ps = match f.ftype with FunType (plist, _, _) -> plist in
+let pp_fn_params ftype =
+  let ps = match ftype with FunType (plist, _, _) -> plist in
+  if List.length ps > 0 then
+    " (param"
+    ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" ps
+    ^ ")"
+  else ""
 
+let pp_fn_result ftype =
+  match ftype with
+  | FunType (_, _, []) -> ""
+  | FunType (_, _, [ res ]) -> " (result " ^ pp_labeled_type res ^ ")"
+  | _ ->
+      failwith "PP error, instruction return type can be at most a single value"
+
+let pp_function_import (imp : string * string * fun_type) =
+  match imp with
+  | m, name, ftype ->
+      let params = pp_fn_params ftype and result = pp_fn_result ftype in
+      "(import \"" ^ m ^ "\" \"" ^ name ^ "\" (func " ^ params ^ result ^ "))"
+
+let pp_function (f : wasm_func) =
   let locals =
     if List.length f.locals > 0 then
       " (local"
       ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" f.locals
       ^ ")"
     else ""
-  and params =
-    if List.length ps > 0 then
-      " (param"
-      ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" ps
-      ^ ")"
-    else ""
-  and result =
-    match f.ftype with
-    | FunType (_, _, []) -> ""
-    | FunType (_, _, [ res ]) -> " (result " ^ pp_labeled_type res ^ ")"
-    | _ ->
-        failwith
-          "PP error, instruction return type can be at most a single value"
+  and params = pp_fn_params f.ftype
+  and result = pp_fn_result f.ftype
   and export =
     match f.export_name with
     | Some name -> " (export \"" ^ name ^ "\")"

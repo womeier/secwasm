@@ -407,7 +407,11 @@ let type_check_module (m : wasm_module) =
       empty_context with
       globals = m.globals;
       memory = m.memory;
-      func_types = List.map (fun f -> f.ftype) m.functions;
+      func_types =
+        List.map
+          (fun import -> match import with _, _, ftype -> ftype)
+          m.function_imports
+        @ List.map (fun f -> f.ftype) m.functions;
     }
   in
   let _ = List.map (type_check_function c) m.functions in
