@@ -9,7 +9,19 @@ type labeled_value_type = { t : value_type; lbl : SimpleLattice.t }
 type stack_type = labeled_value_type list
 type fun_type = FunType of stack_type * SimpleLattice.t * stack_type
 type block_type = BlockType of stack_type * stack_type
-type binop = Add | Eq | Mul | Sub | Shr_u | Shl | And | Or
+
+type binop =
+  | Add
+  | Eq
+  | Ge_s
+  | Lt_s
+  | Le_s
+  | Mul
+  | Sub
+  | Shr_u
+  | Shl
+  | And
+  | Or
 
 [@@@ocamlformat "disable"]
 
@@ -50,6 +62,7 @@ type wasm_memory = { size : int } (* in #pages *)
 type wasm_module = {
   globals : wasm_global list;
   functions : wasm_func list;
+  function_imports : (string * string * fun_type) list;
   memory : wasm_memory option;
 }
 
@@ -99,6 +112,9 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_BinOp Add -> "i32.add"
   | WI_BinOp Mul -> "i32.mul"
   | WI_BinOp Eq -> "i32.eq"
+  | WI_BinOp Ge_s -> "i32.ge_s"
+  | WI_BinOp Le_s -> "i32.le_s"
+  | WI_BinOp Lt_s -> "i32.lt_s"
   | WI_BinOp Sub -> "i32.sub"
   | WI_BinOp Shr_u -> "i32.shr_u"
   | WI_BinOp Shl -> "i32.shl"
@@ -119,28 +135,36 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_Br idx -> "br " ^ Int.to_string idx
   | WI_BrIf idx -> "br_if " ^ Int.to_string idx
 
-let pp_function (f : wasm_func) =
-  let ps = match f.ftype with FunType (plist, _, _) -> plist in
+let pp_fn_params ftype =
+  let ps = match ftype with FunType (plist, _, _) -> plist in
+  if List.length ps > 0 then
+    " (param"
+    ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" ps
+    ^ ")"
+  else ""
 
+let pp_fn_result ftype =
+  match ftype with
+  | FunType (_, _, []) -> ""
+  | FunType (_, _, [ res ]) -> " (result " ^ pp_labeled_type res ^ ")"
+  | _ ->
+      failwith "PP error, instruction return type can be at most a single value"
+
+let pp_function_import (imp : string * string * fun_type) =
+  match imp with
+  | m, name, ftype ->
+      let params = pp_fn_params ftype and result = pp_fn_result ftype in
+      "(import \"" ^ m ^ "\" \"" ^ name ^ "\" (func " ^ params ^ result ^ "))"
+
+let pp_function (f : wasm_func) =
   let locals =
     if List.length f.locals > 0 then
       " (local"
       ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" f.locals
       ^ ")"
     else ""
-  and params =
-    if List.length ps > 0 then
-      " (param"
-      ^ List.fold_left (fun _s l -> " " ^ pp_labeled_type l ^ _s) "" ps
-      ^ ")"
-    else ""
-  and result =
-    match f.ftype with
-    | FunType (_, _, []) -> ""
-    | FunType (_, _, [ res ]) -> " (result " ^ pp_labeled_type res ^ ")"
-    | _ ->
-        failwith
-          "PP error, instruction return type can be at most a single value"
+  and params = pp_fn_params f.ftype
+  and result = pp_fn_result f.ftype
   and export =
     match f.export_name with
     | Some name -> " (export \"" ^ name ^ "\")"
@@ -150,13 +174,26 @@ let pp_function (f : wasm_func) =
   in
   "(func" ^ export ^ params ^ result ^ nl ^ locals ^ nl ^ body ^ nl ^ ")"
 
+let pp_global g =
+  let t = if g.mut then "(mut i32)" else "i32"
+  and init =
+    match g.const with
+    | [ instr ] -> pp_instruction 0 instr
+    | _ -> failwith "PP, global can only be initialized by single instruction"
+  in
+  "(global " ^ t ^ " " ^ init ^ ")"
+
 let pp_memory (m : wasm_memory option) =
   match m with
   | None -> ""
   | Some mem -> "(memory " ^ Int.to_string mem.size ^ ")"
 
 let pp_module (m : wasm_module) =
-  (* TODO: memory, globals, anything else? *)
-  "(module" ^ nl ^ pp_memory m.memory ^ nl
+  "(module" ^ nl
+  ^ List.fold_left
+      (fun _s fi -> _s ^ nl ^ pp_function_import fi)
+      "" m.function_imports
   ^ List.fold_left (fun _s f -> _s ^ nl ^ pp_function f) "" m.functions
-  ^ nl ^ ")"
+  ^ nl
+  ^ List.fold_left (fun _s g -> _s ^ nl ^ pp_global g) "" m.globals
+  ^ nl ^ pp_memory m.memory ^ nl ^ nl ^ ")"
