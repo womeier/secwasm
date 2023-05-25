@@ -1,8 +1,11 @@
 # secwasm Project - May 2023
 
-# Setup
+- Implementation of a security-typesystem following [this](https://plas2022.github.io/files/pdf/SecWasm.pdf) paper
+- Security guarantee: termination-insensitive non-interference
 
-### General Setup
+## Setup
+
+### General
 - Install opam dependencies: `cd src/` `opam pin add -y .` `opam install --deps-only secwasm`
 - Run the project with the Makefile in `src/`
 
