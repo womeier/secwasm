@@ -199,22 +199,11 @@ let lookup_label (c : context) (idx : int) =
   if idx < List.length c.labels then List.nth c.labels idx
   else failwith ("expected label of index " ^ Int.to_string idx)
 
-let check_stack s1 s2 =
-  assert (
-    List.length s1 = List.length s2
-    && List.for_all2
-         (fun { t = t1; lbl = _lbl1 } { t = t2; lbl = _lbl2 } -> t1 == t2)
-         s1 s2)
-
 let same_lengths l1 l2 = List.compare_lengths l1 l2 == 0
 let leq_ty { t = t1; lbl = l1 } { t = t2; lbl = l2 } = t1 == t2 && l1 <<= l2
 
 let leq_stack (s1 : labeled_value_type list) (s2 : labeled_value_type list) =
   same_lengths s1 s2 && List.for_all2 leq_ty s1 s2
-
-let leq_gamma (g1 : stack_of_stacks_type) (g2 : stack_of_stacks_type) =
-  same_lengths g1 g2
-  && List.for_all2 (fun (st1, _) (st2, _) -> leq_stack st1 st2) g1 g2
 
 let lift_st lbl_lift_to st =
   let lift_st_helper ({ lbl; _ } as v) acc =
