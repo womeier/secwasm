@@ -9,7 +9,19 @@ type labeled_value_type = { t : value_type; lbl : SimpleLattice.t }
 type stack_type = labeled_value_type list
 type fun_type = FunType of stack_type * SimpleLattice.t * stack_type
 type block_type = BlockType of stack_type * stack_type
-type binop = Add | Eq | Mul | Sub | Shr_u | Shl | And | Or
+
+type binop =
+  | Add
+  | Eq
+  | Ge_s
+  | Lt_s
+  | Le_s
+  | Mul
+  | Sub
+  | Shr_u
+  | Shl
+  | And
+  | Or
 
 [@@@ocamlformat "disable"]
 
@@ -100,6 +112,9 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_BinOp Add -> "i32.add"
   | WI_BinOp Mul -> "i32.mul"
   | WI_BinOp Eq -> "i32.eq"
+  | WI_BinOp Ge_s -> "i32.ge_s"
+  | WI_BinOp Le_s -> "i32.le_s"
+  | WI_BinOp Lt_s -> "i32.lt_s"
   | WI_BinOp Sub -> "i32.sub"
   | WI_BinOp Shr_u -> "i32.shr_u"
   | WI_BinOp Shl -> "i32.shl"
@@ -159,13 +174,26 @@ let pp_function (f : wasm_func) =
   in
   "(func" ^ export ^ params ^ result ^ nl ^ locals ^ nl ^ body ^ nl ^ ")"
 
+let pp_global g =
+  let t = if g.mut then "(mut i32)" else "i32"
+  and init =
+    match g.const with
+    | [ instr ] -> pp_instruction 0 instr
+    | _ -> failwith "PP, global can only be initialized by single instruction"
+  in
+  "(global " ^ t ^ " " ^ init ^ ")"
+
 let pp_memory (m : wasm_memory option) =
   match m with
   | None -> ""
   | Some mem -> "(memory " ^ Int.to_string mem.size ^ ")"
 
 let pp_module (m : wasm_module) =
-  (* TODO: memory, globals, anything else? *)
-  "(module" ^ nl ^ pp_memory m.memory ^ nl
+  "(module" ^ nl
+  ^ List.fold_left
+      (fun _s fi -> _s ^ nl ^ pp_function_import fi)
+      "" m.function_imports
   ^ List.fold_left (fun _s f -> _s ^ nl ^ pp_function f) "" m.functions
-  ^ nl ^ ")"
+  ^ nl
+  ^ List.fold_left (fun _s g -> _s ^ nl ^ pp_global g) "" m.globals
+  ^ nl ^ pp_memory m.memory ^ nl ^ nl ^ ")"

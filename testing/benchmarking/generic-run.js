@@ -1,5 +1,5 @@
 const fs = require('fs');
-const bytes = fs.readFileSync(__dirname + '/bubblesort.wasm');
+const bytes = fs.readFileSync(__dirname + {{file}});
 
 let importObject = {
     env: {

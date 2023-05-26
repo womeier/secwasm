@@ -86,6 +86,195 @@ let store_public_load_as_secret = store_and_load_first_byte Public Secret
 let store_secret_load_as_public = store_and_load_first_byte Secret Public
 let store_secret_load_as_secret = store_and_load_first_byte Secret Secret
 
+(****** bubblesort module ******)
+(* based on testing/examples/bubblesort.wat > wat2wasm > wasm2wat
+
+   the exported program can be run with testing/examples/bubblesort.js
+*)
+
+let bubblesort_module : wasm_module =
+  (* array of i32 of size <length> starting from beginning of linear memory *)
+  let i32Public = { t = I32; lbl = Public } in
+  {
+    memory = Some { size = 10 };
+    globals =
+      [ { (* length *)
+          gtype = i32Public; const = [ WI_Const 10 ]; mut = true } ];
+    function_imports =
+      [
+        ("env", "write_char", FunType ([ i32Public ], Public, []));
+        ("env", "write_int", FunType ([ i32Public ], Public, []));
+        ("env", "get_random", FunType ([], Public, [ i32Public ]));
+      ];
+    functions =
+      [
+        {
+          (* init: 3 *)
+          ftype = FunType ([ i32Public ], Public, []);
+          locals = [];
+          body =
+            [
+              WI_LocalGet 0;
+              WI_GlobalSet 0;
+              WI_Const 0;
+              WI_LocalGet 0;
+              WI_Call 4 (* init_vals *);
+            ];
+          export_name = Some "init";
+        };
+        {
+          (* init_vals: 4 *)
+          ftype =
+            FunType
+              ( [ i32Public (* start_ptr *); i32Public (* remaining *) ],
+                Public,
+                [] );
+          locals = [];
+          body =
+            [
+              WI_LocalGet 1;
+              WI_Const 0;
+              WI_BinOp Eq;
+              WI_BrIf 0 (* return *);
+              WI_LocalGet 0;
+              WI_Call 2 (* get_random *);
+              WI_Store Public;
+              WI_LocalGet 0;
+              WI_Const 4;
+              WI_BinOp Add;
+              WI_LocalGet 1;
+              WI_Const 1;
+              WI_BinOp Sub;
+              WI_Call 4 (* self *);
+            ];
+          export_name = None;
+        };
+        {
+          (* print: 5 *)
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body =
+            [
+              WI_Const 40 (* ( *);
+              WI_Call 0;
+              WI_Const 0;
+              WI_Call 6;
+              WI_Const 32 (* space *);
+              WI_Call 0;
+              WI_Const 41 (* ) *);
+              WI_Call 0;
+            ];
+          export_name = Some "print";
+        };
+        {
+          (* print_nums: 6 *)
+          ftype = FunType ([ i32Public (* idx *) ], Public, []);
+          locals = [];
+          body =
+            [
+              WI_LocalGet 0;
+              WI_GlobalGet 0;
+              WI_BinOp Ge_s;
+              WI_BrIf 0;
+              WI_Const 32 (* space *);
+              WI_Call 0 (* write_char *);
+              WI_LocalGet 0;
+              WI_Const 4;
+              WI_BinOp Mul;
+              WI_Load Public;
+              WI_Call 1 (* write_int*);
+              WI_LocalGet 0;
+              WI_Const 1;
+              WI_BinOp Add;
+              WI_Call 6 (* self*);
+            ];
+          export_name = None;
+        };
+        {
+          (* sort: 7 *)
+          locals = [];
+          body =
+            [
+              WI_Const 0;
+              WI_Const 0;
+              WI_Call 8;
+              WI_Const 0;
+              WI_BinOp Eq;
+              WI_BrIf 0 (* return *);
+              WI_Call 7 (* sort helper *);
+            ];
+          ftype = FunType ([], Public, []);
+          export_name = Some "sort";
+        };
+        {
+          (* sort_helper: 8 *)
+          locals =
+            [
+              i32Public (* ptr_a *); i32Public (* ptr_b *); i32Public (* tmp *);
+            ];
+          body =
+            [
+              WI_Block
+                ( BlockType ([], []),
+                  [
+                    WI_LocalGet 1;
+                    WI_GlobalGet 0;
+                    WI_Const 2;
+                    WI_BinOp Sub;
+                    WI_LocalGet 0;
+                    WI_BinOp Lt_s;
+                    WI_BrIf 1;
+                    WI_Drop;
+                  ] );
+              WI_LocalGet 0;
+              WI_Const 4;
+              WI_BinOp Mul;
+              WI_LocalSet 2;
+              WI_LocalGet 0;
+              WI_Const 1;
+              WI_BinOp Add;
+              WI_Const 4;
+              WI_BinOp Mul;
+              WI_LocalSet 3;
+              WI_Block
+                ( BlockType ([], []),
+                  [
+                    (* swap *)
+                    WI_LocalGet 2;
+                    WI_Load Public;
+                    WI_LocalGet 3;
+                    WI_Load Public;
+                    WI_BinOp Le_s;
+                    WI_BrIf 0;
+                    WI_LocalGet 2;
+                    WI_Load Public;
+                    WI_LocalSet 4;
+                    WI_LocalGet 2;
+                    WI_LocalGet 3;
+                    WI_Load Public;
+                    WI_Store Public;
+                    WI_LocalGet 3;
+                    WI_LocalGet 4;
+                    WI_Store Public;
+                    WI_Const 1;
+                    WI_LocalSet 1;
+                  ] );
+              WI_LocalGet 0;
+              WI_Const 1;
+              WI_BinOp Add;
+              WI_LocalGet 1;
+              WI_Call 8;
+            ];
+          ftype =
+            FunType
+              ( [ i32Public (* idx *); i32Public (* changed flag *) ],
+                Public,
+                [ i32Public (* changed flag *) ] );
+          export_name = None;
+        };
+      ];
+  }
+
 (****** CMDLINE PARSING *******)
 
 let pretty_print = ref false
@@ -123,6 +312,9 @@ let set_module s =
   | "12" ->
       (* store and load at first index out of bounds  *)
       wmodule := Some (store_and_load_module 65533 65533 Secret Secret)
+  | "bubblesort" ->
+      (* the produced wasm module can be run with ../../testing/examples/bubblesort.js *)
+      wmodule := Some bubblesort_module
   | _ -> ()
 
 let speclist =

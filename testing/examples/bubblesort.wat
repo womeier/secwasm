@@ -1,6 +1,5 @@
 (module
   ;; function imports
-  (import "env" "log_i32" (func $log_i32 ( param i32 )))
   (import "env" "write_char" (func $write_char( param i32 ))) ;; ascii decimal
   (import "env" "write_int" (func $write_int( param i32 )))
   (import "env" "get_random" (func $get_random (result i32)))

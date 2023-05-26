@@ -11,6 +11,7 @@
 # ocamlbuild working directory
 _build/
 _coverage/
+_benchmark/
 
 # ocamlbuild targets
 *.byte
