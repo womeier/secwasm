@@ -8,7 +8,7 @@ let importObject = {
             var chr = String.fromCharCode(value);
             process.stdout.write(chr);
         },
-        get_random: () => { return Math.floor(Math.random() * 5000) - 2500 },
+        get_random: () => { return Math.floor(Math.random() * 10000) - 5000 },
     },
 /*    env: {
         import_i32: 5_000_000_000, // _ is ignored in numbers in JS and WAT
@@ -22,12 +22,15 @@ let importObject = {
         new Uint8Array (bytes), importObject
     );
 
-    let len = 500;
+    //let len = 10000;
+    let len = 1000;
+    console.log("Running bubblesort benchmark on array (length = " + len + ") [" + {{file}} + "]")
     obj.instance.exports.init(len);
     obj.instance.exports.print(); console.log("\n===============================");
 
-    // TODO measure time of sort();
+    const start = Date.now();
     obj.instance.exports.sort();
-
-    obj.instance.exports.print(); console.log("");
+    const stop = Date.now();
+    obj.instance.exports.print(); console.log("\n===============================");
+    console.log("Sorting array of length " + len + " with bubblesort took " + (stop - start) + "ms.");
 })();

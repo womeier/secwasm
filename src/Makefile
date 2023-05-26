@@ -25,12 +25,10 @@ bubblesort-benchmark:
 	cd _benchmark/bubblesort &&	wat2wasm orig.wat
 
 	@echo "********************************************************************************"
-	@echo "Running bubblesort benchmark original"
-	@cd _benchmark/bubblesort && node orig.js
+	@cd _benchmark/bubblesort && node --stack-size=10000000 orig.js
 
 	@echo "********************************************************************************"
-	@echo "Running bubblesort benchmark dynchecks"
-	@cd _benchmark/bubblesort && node dynchecks.js
+	@cd _benchmark/bubblesort && node --stack-size=10000000 dynchecks.js
 
 clean:
 	dune clean
