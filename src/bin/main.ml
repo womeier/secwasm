@@ -313,7 +313,7 @@ let set_module s =
       (* store and load at first index out of bounds  *)
       wmodule := Some (store_and_load_module 65533 65533 Secret Secret)
   | "bubblesort" ->
-      (* the produced wasm module can be run with ../../testing/examples/bubblesort.js *)
+      (* the produced wasm module can be run with the Makefile *)
       wmodule := Some bubblesort_module
   | _ -> ()
 
