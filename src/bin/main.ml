@@ -51,11 +51,11 @@ let example1_module : wasm_module =
     )
   )
 *)
-let store_and_load_module (store_addr : int) (load_addr : int)
+let store_and_load_module (mem_size : int) (store_addr : int) (load_addr : int)
     (store_label : SimpleLattice.t) (load_label : SimpleLattice.t) : wasm_module
     =
   {
-    memory = Some { size = 1 };
+    memory = Some { size = mem_size };
     globals = [];
     function_imports = [];
     functions =
@@ -80,7 +80,11 @@ let store_and_load_module (store_addr : int) (load_addr : int)
       ];
   }
 
-let store_and_load_first_byte = store_and_load_module 0 0
+let store_and_load_first_byte =
+  let mem_size = 1 in
+  let addr = 0 in
+  store_and_load_module mem_size addr addr
+
 let store_public_load_as_public = store_and_load_first_byte Public Public
 let store_public_load_as_secret = store_and_load_first_byte Public Secret
 let store_secret_load_as_public = store_and_load_first_byte Secret Public
@@ -289,29 +293,91 @@ let set_module s =
   | "1" -> wmodule := Some example1_module
   | "2" -> wmodule := Some store_public_load_as_public (* Ok! *)
   | "3" -> wmodule := Some store_public_load_as_secret (* Ok! *)
-  | "4" -> wmodule := Some store_secret_load_as_public (* Should trap! *)
-  | "5" -> wmodule := Some store_secret_load_as_secret (* Ok! *)
+  | "4" -> wmodule := Some store_secret_load_as_secret (* Ok! *)
+  | "5" -> wmodule := Some store_secret_load_as_public (* Should trap! *)
   | "6" ->
       (* Should trap! *)
-      wmodule := Some (store_and_load_module 0 1 Secret Public)
+      let mem_size = 1 in
+      let store_addr = 0 in
+      let load_addr = 1 in
+      wmodule :=
+        Some (store_and_load_module mem_size store_addr load_addr Secret Public)
   | "7" ->
       (* Should trap! *)
-      wmodule := Some (store_and_load_module 0 2 Secret Public)
+      let mem_size = 1 in
+      let store_addr = 0 in
+      let load_addr = 2 in
+      wmodule :=
+        Some (store_and_load_module mem_size store_addr load_addr Secret Public)
   | "8" ->
       (* Should trap! *)
-      wmodule := Some (store_and_load_module 0 3 Secret Public)
+      let mem_size = 1 in
+      let store_addr = 0 in
+      let load_addr = 3 in
+      wmodule :=
+        Some (store_and_load_module mem_size store_addr load_addr Secret Public)
   | "9" ->
       (* Ok, we're readying 2nd word in memory! *)
-      wmodule := Some (store_and_load_module 0 4 Secret Public)
+      let mem_size = 1 in
+      let store_addr = 0 in
+      let load_addr = 4 in
+      wmodule :=
+        Some (store_and_load_module mem_size store_addr load_addr Secret Public)
   | "10" ->
       (* store and load at last available byte in 1 page memory *)
-      wmodule := Some (store_and_load_module 65532 65532 Public Public)
+      let mem_size = 1 in
+      let addr = 65532 in
+      wmodule := Some (store_and_load_module mem_size addr addr Public Public)
   | "11" ->
       (* store and load at last available byte in 1 page memory *)
-      wmodule := Some (store_and_load_module 65532 65532 Public Secret)
+      let mem_size = 1 in
+      let addr = 65532 in
+      wmodule := Some (store_and_load_module mem_size addr addr Public Secret)
   | "12" ->
       (* store and load at first index out of bounds  *)
-      wmodule := Some (store_and_load_module 65533 65533 Secret Secret)
+      let mem_size = 1 in
+      let addr = 65533 in
+      wmodule := Some (store_and_load_module mem_size addr addr Secret Secret)
+  | "13" ->
+      (* store and load at first index out of bounds  *)
+      let mem_size = 1 in
+      let addr = 65533 in
+      wmodule := Some (store_and_load_module mem_size addr addr Secret Secret)
+  | "14" ->
+      (* test a memory size of 2 pages, access first address  *)
+      let mem_size = 2 in
+      let addr = 0 in
+      wmodule := Some (store_and_load_module mem_size addr addr Secret Secret)
+  | "15" ->
+      (* test a memory size of 2 pages, access last valid address = 2^17 - 4 *)
+      let mem_size = 2 in
+      let addr = 131068 in
+      wmodule := Some (store_and_load_module mem_size addr addr Secret Secret)
+  | "16" ->
+      (* test a memory size of 4 pages, access first address  *)
+      let mem_size = 4 in
+      let addr = 0 in
+      wmodule := Some (store_and_load_module mem_size addr addr Secret Secret)
+  | "17" ->
+      (* test a memory size of 4 pages, access last valid address = 2^18 - 4 *)
+      let mem_size = 4 in
+      let addr = 262140 in
+      wmodule := Some (store_and_load_module mem_size addr addr Secret Secret)
+  | "18" ->
+      (* test a memory size of 64 pages, access first address *)
+      let mem_size = 64 in
+      let addr = 0 in
+      wmodule := Some (store_and_load_module mem_size addr addr Secret Secret)
+  | "19" ->
+      (* test a memory size of 64 pages, access last valid address = 2^23 - 4 *)
+      let mem_size = 64 in
+      let addr = 8388604 in
+      wmodule := Some (store_and_load_module mem_size addr addr Secret Secret)
+  | "20" ->
+      (* test a memory size of 64 pages, access first address out of bounds = 2^23 - 3 *)
+      let mem_size = 64 in
+      let addr = 8388605 in
+      wmodule := Some (store_and_load_module mem_size addr addr Secret Secret)
   | "bubblesort" ->
       (* the produced wasm module can be run with the Makefile *)
       wmodule := Some bubblesort_module
