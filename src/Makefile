@@ -11,7 +11,7 @@ run:
 bubblesort-benchmark:
 	dune build
 	rm -rf _benchmark/bubblesort
-	mkdir _benchmark/bubblesort
+	mkdir -p _benchmark/bubblesort
 	dune exec _build/default/bin/main.exe -- -example bubblesort -typecheck
 	dune exec _build/default/bin/main.exe -- -example bubblesort -pp -out _benchmark/bubblesort/orig.wat
 	dune exec _build/default/bin/main.exe -- -example bubblesort -dynchecks -out _benchmark/bubblesort/dynchecks.wat
