@@ -1,7 +1,11 @@
 open Ast
 open Sec
 
-type context = { locals : labeled_value_type list; memory : wasm_memory }
+type context = {
+  noOfParams : int;
+  locals : labeled_value_type list;
+  memory : wasm_memory;
+}
 
 let push_bitmask0 (c : context) =
   [
@@ -33,8 +37,8 @@ let translate_store (c : context) (encoded_lbl : int) :
   (* We extend the list of locals with two extra items,
          for saving the value to be stored and address to
          stored into *)
-  let idx_val = List.length c.locals in
-  let idx_addr = List.length c.locals + 1 in
+  let idx_val = List.length c.locals + c.noOfParams in
+  let idx_addr = List.length c.locals + c.noOfParams + 1 in
   let new_ctxt =
     {
       c with
@@ -85,7 +89,7 @@ let translate_load_public (c : context) : context * wasm_instruction =
   (* We extend the list of locals with two extra items,
          for saving the value to be stored and address to
          stored into *)
-  let idx_addr = List.length c.locals in
+  let idx_addr = List.length c.locals + c.noOfParams in
   let new_ctxt =
     {
       c with
@@ -171,7 +175,10 @@ let rec transform_seq (c : context) (seq : wasm_instruction list) :
       (c'', i' :: rest')
 
 let transform_func (m : wasm_memory) (f : wasm_func) : wasm_func =
-  let ctxt = { locals = f.locals; memory = m } in
+  let noOfParams =
+    match f.ftype with FunType (st_in, _, _) -> List.length st_in
+  in
+  let ctxt = { noOfParams; locals = f.locals; memory = m } in
   (* transform the body of f*)
   let ctxt', new_body = transform_seq ctxt f.body in
   { f with body = new_body; locals = ctxt'.locals }
