@@ -5,7 +5,7 @@ type context = {
   memory : wasm_memory option; (* number of memories *)
   func_types : fun_type list;
   globals : wasm_global list;
-  locals : labeled_value_type list;
+  locals : labeled_value_type list; (* params and locals *)
   labels : labeled_value_type list list;
   return : labeled_value_type list;
 }
