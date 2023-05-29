@@ -1,6 +1,8 @@
 open Ast
 open Sec
 
+let rec log2 x = match x with 1 -> 0 | _ -> 1 + log2 ((x + 1) / 2)
+
 type context = {
   noOfParams : int;
   locals : labeled_value_type list;
@@ -11,25 +13,24 @@ let push_bitmask0 (c : context) =
   [
     (* push 1111...111 *)
     WI_Const (-1);
-    (* todo: explain why 18 works here *)
-    WI_Const 18;
-    WI_Const c.memory.size;
-    (* compute 18 - (mem_size + 1)*)
+    WI_Const 16;
+    WI_Const (log2 c.memory.size);
+    (* compute 16 - (log mem_size) *)
     WI_BinOp Sub;
-    (* shift 11111 right with 32 - (mem_size + 1)*)
+    (* shift 11111 right with 32 - (log mem_size) *)
     WI_BinOp Shr_u
-    (* = 01111111 where 0 is at index mem_size (from the right) *);
+    (* = 01111111 where 0 is at index mem_size + 1 (from the right) *);
   ]
 
 let push_bitmask1 (c : context) =
   [
-    (* Size of memory in bytes = mem_size * 64 * 2^10 = 2^(16+mem_size) *)
+    (* Size of memory in bytes = mem_size * 64 * 2^10 = 2^(16 + log mem_size) *)
     WI_Const 1;
-    WI_Const 14;
-    WI_Const c.memory.size;
+    WI_Const 16;
+    WI_Const (log2 c.memory.size);
     WI_BinOp Add;
     WI_BinOp Shl
-    (* = 2^(15+mem_size) = 100000 where 1 is at index k (from the right) *);
+    (* = 100000 where 1 is at index log mem_size + 16 (from the right) *);
   ]
 
 let translate_store (c : context) (encoded_lbl : int) :
@@ -185,17 +186,17 @@ let transform_func (m : wasm_memory) (f : wasm_func) : wasm_func =
 
 let transform_module (m : wasm_module) : wasm_module =
   let rec f x acc =
-    if x <= acc then 2 * acc else match x with 0 -> 0 | _ -> f x (2 * acc)
+    if x <= acc then acc else match x with 0 -> 0 | _ -> f x (2 * acc)
   in
   match m.memory with
   (* if module doesn't use a memory it doesn't typecheck *)
   | None -> m
   | Some mem ->
-      (* double the size of the memory and make sure it's a multiple of 2
-         This makes splitting an address up into low/ high addresses easier *)
-      let mem' = { size = f mem.size 1 } in
+      (* Make sure the memory is a multiple of 2, for bitmasking operation to actually split the memory *)
+      let nearest_power_of_two = f mem.size 1 in
       {
         m with
-        memory = Some mem';
-        functions = List.map (transform_func mem') m.functions;
+        memory = Some { size = nearest_power_of_two * 2 };
+        functions =
+          List.map (transform_func { size = nearest_power_of_two }) m.functions;
       }
