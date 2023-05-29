@@ -29,7 +29,7 @@ let importObject = {
     obj.instance.exports.print(); console.log("\n===============================");
 
     const start = Date.now();
-    obj.instance.exports.sort();
+    obj.instance.exports.bubblesort();
     const stop = Date.now();
     obj.instance.exports.print(); console.log("\n===============================");
     console.log("Sorting array of length " + len + " with bubblesort took " + (stop - start) + "ms.");

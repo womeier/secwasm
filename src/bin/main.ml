@@ -208,7 +208,7 @@ let bubblesort_module : wasm_module =
               WI_Call 7 (* sort helper *);
             ];
           ftype = FunType ([], Public, []);
-          export_name = Some "sort";
+          export_name = Some "bubblesort";
         };
         {
           (* sort_helper: 8 *)
