@@ -176,6 +176,9 @@ and transform_instr (c : context) (i : wasm_instruction) :
   | WI_Block (bt, instr) ->
       let c', instr' = transform_seq c instr in
       (c', WI_Block (bt, instr'))
+  | WI_Loop (bt, instr) ->
+      let c', instr' = transform_seq c instr in
+      (c', WI_Loop (bt, instr'))
   | _ -> (c, i)
 
 let transform_func (m : wasm_memory) (f : wasm_func) : wasm_func =
