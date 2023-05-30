@@ -15,6 +15,7 @@ type binop =
   | Eq
   | Ge_s
   | Lt_s
+  | Lt_u
   | Le_s
   | Mul
   | Sub
@@ -38,6 +39,7 @@ type wasm_instruction =
   | WI_Load of SimpleLattice.t                                        (* read memory at address *)
   | WI_Store of SimpleLattice.t                                       (* write memory at address *)
   | WI_Block of block_type * wasm_instruction list                    (* block *)
+  | WI_Loop of block_type * wasm_instruction list                     (* loop *)
   | WI_Br of int                                                      (* unconditional branch *)
   | WI_BrIf of int                                                    (* conditional branch *)
   | WI_Nop
@@ -115,6 +117,7 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_BinOp Ge_s -> "i32.ge_s"
   | WI_BinOp Le_s -> "i32.le_s"
   | WI_BinOp Lt_s -> "i32.lt_s"
+  | WI_BinOp Lt_u -> "i32.lt_u"
   | WI_BinOp Sub -> "i32.sub"
   | WI_BinOp Shr_u -> "i32.shr_u"
   | WI_BinOp Shl -> "i32.shl"
@@ -130,6 +133,10 @@ let rec pp_instruction (indent : int) (instr : wasm_instruction) =
   | WI_Store _ -> "i32.store"
   | WI_Block (t, b) ->
       "block " ^ pp_block_type t ^ nl
+      ^ pp_instructions (indent + 2) b
+      ^ spaces indent ^ "end"
+  | WI_Loop (t, b) ->
+      "loop " ^ pp_block_type t ^ nl
       ^ pp_instructions (indent + 2) b
       ^ spaces indent ^ "end"
   | WI_Br idx -> "br " ^ Int.to_string idx
