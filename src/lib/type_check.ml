@@ -358,7 +358,8 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               let g1, g2 = split_at_index (i - 1) g' in
               match lift (lcond <> pc) ((st @ st', pc) :: g1) with
               | [] -> raise (InternalError "stack-of-stacks ill-formed")
-              | (st'', pc') :: g1' -> (((st'', pc') :: g1') @ g2, c))))
+              | (st'', pc') :: g1' -> (((st'', pc') :: g1') @ g2, c)))
+      | WI_Loop _ -> raise (NotImplemented "loops"))
   | _ -> raise (InternalError "stack-of-stacks ill-formed")
 
 and check_seq ((g, c) : stack_of_stacks_type * context)

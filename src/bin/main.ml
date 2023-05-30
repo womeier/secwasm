@@ -279,6 +279,115 @@ let bubblesort_module : wasm_module =
       ];
   }
 
+let sequential_mem_store_module (mem_size : int) =
+  let i32Public = { t = I32; lbl = Public } in
+  {
+    memory = Some { size = mem_size };
+    globals = [];
+    function_imports = [];
+    functions =
+      [
+        {
+          (* params: max addr size, addr offset *)
+          (* return: max addr size *)
+          ftype = FunType ([ i32Public; i32Public ], Public, [ i32Public ]);
+          locals = [ i32Public; i32Public ];
+          body =
+            [
+              WI_Block
+                ( BlockType ([], []),
+                  [
+                    WI_Loop
+                      ( BlockType ([], []),
+                        [
+                          (* max addr, e.g. 2 ^ ((log memory.size) + 16) - 4 *)
+                          WI_LocalGet 0;
+                          (* ;; current addr *)
+                          WI_LocalGet 2;
+                          WI_BinOp Lt_s;
+                          WI_BrIf 1;
+                          WI_LocalGet 2;
+                          (* get_random *)
+                          WI_Const 42;
+                          WI_Store Secret;
+                          WI_LocalGet 2;
+                          (* offset *)
+                          WI_LocalGet 1;
+                          WI_BinOp Add;
+                          (* save new addr *)
+                          WI_LocalSet 3;
+                          WI_LocalGet 3;
+                          (* load old addr *)
+                          WI_LocalGet 2;
+                          (* check for overflow *)
+                          WI_BinOp Lt_u;
+                          WI_BrIf 1;
+                          WI_LocalGet 3;
+                          WI_LocalSet 2;
+                          WI_Br 0;
+                        ] );
+                  ] );
+              WI_LocalGet 0;
+            ];
+          export_name = Some "foo";
+        };
+      ];
+  }
+
+let sequential_mem_store_load_module (mem_size : int) =
+  let i32Public = { t = I32; lbl = Public } in
+  {
+    memory = Some { size = mem_size };
+    globals = [];
+    function_imports = [];
+    functions =
+      [
+        {
+          (* params: max addr size, addr offset *)
+          (* return: max addr size *)
+          ftype = FunType ([ i32Public; i32Public ], Public, [ i32Public ]);
+          locals = [ i32Public; i32Public ];
+          body =
+            [
+              WI_Block
+                ( BlockType ([], []),
+                  [
+                    WI_Loop
+                      ( BlockType ([], []),
+                        [
+                          WI_LocalGet 0;
+                          (* max addr, e.g. 2 ^ ((log memory.size) + 16) - 4 *)
+                          WI_LocalGet 2;
+                          (* ;; current addr *)
+                          WI_BinOp Lt_s;
+                          WI_BrIf 1;
+                          WI_LocalGet 2;
+                          WI_Const 42;
+                          WI_Store Secret;
+                          WI_LocalGet 2;
+                          WI_LocalGet 1;
+                          (* offset *)
+                          WI_BinOp Add;
+                          WI_LocalSet 3;
+                          (* save new addr *)
+                          WI_LocalGet 3;
+                          WI_LocalGet 2;
+                          (* load old addr *)
+                          WI_BinOp Lt_u;
+                          (* check for overflow *)
+                          WI_BrIf 1;
+                          WI_LocalGet 3;
+                          WI_LocalSet 2;
+                          WI_Br 0;
+                        ] );
+                  ] );
+              WI_LocalGet 0;
+            ];
+          export_name = Some "foo";
+        };
+      ];
+  }
+
 (****** CMDLINE PARSING *******)
 
 let pretty_print = ref false
@@ -381,6 +490,12 @@ let set_module s =
   | "bubblesort" ->
       (* the produced wasm module can be run with the Makefile *)
       wmodule := Some bubblesort_module
+  | "seq_mem_store" ->
+      (* the produced wasm module can be run with the Makefile *)
+      wmodule := Some (sequential_mem_store_module 32768)
+  | "seq_mem_store_load" ->
+      (* the produced wasm module can be run with the Makefile *)
+      wmodule := Some (sequential_mem_store_load_module 32768)
   | _ -> ()
 
 let speclist =

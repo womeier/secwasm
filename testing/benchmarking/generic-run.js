@@ -23,14 +23,14 @@ let importObject = {
     );
 
     //let len = 10000;
-    let len = 1000;
+    let len = 20000;
     console.log("Running bubblesort benchmark on array (length = " + len + ") [" + {{file}} + "]")
     obj.instance.exports.init(len);
-    obj.instance.exports.print(); console.log("\n===============================");
+    console.log("\n===============================");
 
     const start = Date.now();
     obj.instance.exports.sort();
     const stop = Date.now();
-    obj.instance.exports.print(); console.log("\n===============================");
+    console.log("\n===============================");
     console.log("Sorting array of length " + len + " with bubblesort took " + (stop - start) + "ms.");
 })();
