@@ -5,14 +5,17 @@
 
 ## Setup
 
+### Dependencies
+- Ocaml version 4, `dune` version 3.7
+- Webassembly binary toolkit: `wabt`, provides `wat2wasm` and `wasm2wat` among others
+- Nodejs: version 18 or 19
+- perf-tool for benchmarking, debian package name: `linux-perf`
+
 ### General
 - Install opam dependencies: `cd src/` `opam pin add -y .` `opam install --deps-only secwasm`
 - Run the project with the Makefile in `src/`
-- Webassembly binary toolkit: `wabt`, provides `wat2wasm` and `wasm2wat` among others
-- Nodejs: known to work with version 18, 19
-- perf-tool for benchmarking: debian package name: `linux-perf`
 
-### Development Setup
+### Development dependencies
 - Ocaml formatting tool: `opam pin add ocamlformat 0.21.0` `opam install ocamlformat`
 - Pre-commit hook to ensure formatting: `pip install pre-commit` then in the root repo: `pre-commit install`
 
