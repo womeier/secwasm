@@ -153,16 +153,6 @@ let translate_load_secret (c : context) : context * wasm_instruction =
             WI_Load Secret;
           ] ) )
 
-let transform_instr (c : context) (i : wasm_instruction) :
-    context * wasm_instruction =
-  match i with
-  | WI_Load l -> (
-      match l with
-      | Public -> translate_load_public c
-      | Secret -> translate_load_secret c)
-  | WI_Store l -> translate_store c (SimpleLattice.encode l)
-  | _ -> (c, i)
-
 let rec transform_seq (c : context) (seq : wasm_instruction list) :
     context * wasm_instruction list =
   match seq with
@@ -174,6 +164,19 @@ let rec transform_seq (c : context) (seq : wasm_instruction list) :
       let c'', rest' = transform_seq c' rest in
       (* return the newest context and transformed list of instructions *)
       (c'', i' :: rest')
+
+and transform_instr (c : context) (i : wasm_instruction) :
+    context * wasm_instruction =
+  match i with
+  | WI_Load l -> (
+      match l with
+      | Public -> translate_load_public c
+      | Secret -> translate_load_secret c)
+  | WI_Store l -> translate_store c (SimpleLattice.encode l)
+  | WI_Block (bt, instr) ->
+      let c', instr' = transform_seq c instr in
+      (c', WI_Block (bt, instr'))
+  | _ -> (c, i)
 
 let transform_func (m : wasm_memory) (f : wasm_func) : wasm_func =
   let noOfParams =
