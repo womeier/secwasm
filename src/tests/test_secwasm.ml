@@ -1180,6 +1180,34 @@ let _ =
     }
 
 (*
+  Good function call of imported function
+   (import "env" "foo" (func (param i32)))
+
+  (func
+      i32.const 1
+      call 0
+  )
+*)
+
+let _ =
+  test "good function call of imported function" pos_test
+    {
+      memory = None;
+      globals = [];
+      function_imports =
+        [ ("env", "foo", FunType ([ { t = I32; lbl = Public } ], Public, [])) ];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body = [ WI_Const 1; WI_Call 0 ];
+            export_name = None;
+          };
+        ];
+    }
+
+(*
   Function call - not enough arguments provided
   (func (param i32) (result i32)
       i32.const 0
