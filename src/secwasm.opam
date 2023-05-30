@@ -4,6 +4,7 @@ depends: [
   "ocaml"
   "dune" {>= "3.7"}
   "bisect_ppx"
+  "ounit2"
   "odoc" {with-doc}
 ]
 build: [

@@ -30,6 +30,31 @@ bubblesort-benchmark:
 	@echo "********************************************************************************"
 	@cd _benchmark/bubblesort && node --stack-size=10000000 dynchecks.js
 
+arg1 := $(shell python3 -c "print(2**31-5)")
+arg2 := $(shell python3 -c "print(2**2)")
+
+seqmem-benchmark:
+	dune build
+	rm -rf _benchmark/seqmem
+	mkdir -p _benchmark/seqmem
+	dune exec _build/default/bin/main.exe -- -example seq_mem_store -pp -out _benchmark/seqmem/orig.wat
+	dune exec _build/default/bin/main.exe -- -example seq_mem_store -dynchecks -out _benchmark/seqmem/dynchecks.wat
+
+	cd _benchmark/seqmem &&	wat2wasm dynchecks.wat
+	cd _benchmark/seqmem &&	wat2wasm orig.wat
+
+	echo "Timing original:"
+	cd _benchmark/seqmem && perf stat -r 10 -d wasmtime --invoke foo orig.wasm -- $(arg1) $(arg2)
+
+	# sudo perf record -r 10 -k mono wasmtime --profile=jitdump --invoke foo example-original.wasm -- $2 $3
+	# sudo perf inject --jit --input perf.data --output original-perf.jit.data
+
+	echo "Timing code with dynamic checks:"
+	cd _benchmark/seqmem && perf stat -r 10 -d wasmtime --invoke foo dynchecks.wasm -- $(arg1) $(arg2)
+
+	# sudo perf record -r 10 -k mono wasmtime --profile=perfmap --invoke foo example-with-checks.wasm -- $2 $3
+	# sudo perf inject --jit --input perf.data --output checks-perf.jit.data
+
 clean:
 	dune clean
 	rm -rf _coverage/ _benchmark
