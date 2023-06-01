@@ -175,7 +175,7 @@ let err_branch_stack_security_level l s =
   PrivacyViolation
     (Printf.sprintf
        "branching expected security level of all values on stack %s to be \
-        strictly greater than %s"
+        greater than or equal to %s"
        (print_st s) (str_l l))
 
 let err_branch_cond_nocond =
@@ -322,11 +322,11 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           if not (leq_stack st bt_out) then raise (err_branch_prefix bt_out st);
           (* Check that pc ⊑ st_i for all i,
              this case is not reached because the variables in st are tainted by the pc, checked above *)
-          if not (List.for_all (fun v -> pc <<= v.lbl) st) then
+          if not (List.for_all (fun v -> pc <<= v.lbl) bt_out) then
             raise (err_branch_stack_security_level pc st);
           (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
-          let g1, g2 = split_at_index (i - 1) g' in
-          match lift pc ((st @ st', pc) :: g1) with
+          let g1, g2 = split_at_index i g' in
+          match lift pc ((st', pc) :: g1) with
           | [] -> raise (InternalError "stack-of-stacks ill-formed")
           | (st'', pc') :: g1' -> (((st'', pc') :: g1') @ g2, c))
       | WI_BrIf i -> (
@@ -352,10 +352,10 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               if not (leq_stack st bt_out) then
                 raise (err_branch_prefix bt_out st);
               (* Check that pc ⊔ lcond ⊑ st_i for all i *)
-              if not (List.for_all (fun v -> pc <> lcond <<= v.lbl) st) then
-                raise (err_branch_stack_security_level pc st);
+              if not (List.for_all (fun v -> pc <> lcond <<= v.lbl) bt_out) then
+                raise (err_branch_stack_security_level (pc <> lcond) st);
               (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
-              let g1, g2 = split_at_index (i - 1) g' in
+              let g1, g2 = split_at_index i g' in
               match lift (lcond <> pc) ((st @ st', pc) :: g1) with
               | [] -> raise (InternalError "stack-of-stacks ill-formed")
               | (st'', pc') :: g1' -> (((st'', pc') :: g1') @ g2, c)))

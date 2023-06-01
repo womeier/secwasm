@@ -1933,7 +1933,7 @@ let _ =
 let _ =
   test "conditional branch: branching on secret value"
     (neg_test
-      (err_branch_stack_security_level Secret [{t = I32; lbl = Public }]))
+       (err_branch_stack_security_level Secret [ { t = I32; lbl = Public } ]))
     {
       memory = None;
       globals =
@@ -2071,57 +2071,55 @@ let _ =
     }
 
 let _ =
-  test "Illegal implicit flow caught by lift" 
-  (neg_test (err_globalset2 Secret Secret Public))
-  {
-    memory = None;
-    globals =
-      [
-        {
-          gtype = { t = I32; lbl = Secret };
-          const = [ WI_Const 1 ];
-          mut = false;
-        };
-        {
-          gtype = { t = I32; lbl = Public };
-          const = [ WI_Const 0 ];
-          mut = true;
-        };
-      ];
-    function_imports = [];
-    functions =
-      [
-        {
-          ftype = FunType ([], Public, [ { t = I32; lbl = Secret } ]);
-          locals = [];
-          body =
-            [
-              WI_Block
-                ( BlockType 
-                  ( [], [{ t = I32; lbl = Secret}] ),
-                  [
-                    WI_Block
-                    ( BlockType
-                        ( [], [ ] ),
-                      [
-                        WI_Const 42;
-                        WI_Block
-                          (BlockType ( [], [] ),
+  test "Illegal implicit flow caught by lift"
+    (neg_test (err_globalset2 Secret Secret Public))
+    {
+      memory = None;
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 1 ];
+            mut = false;
+          };
+          {
+            gtype = { t = I32; lbl = Public };
+            const = [ WI_Const 0 ];
+            mut = true;
+          };
+        ];
+      function_imports = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, [ { t = I32; lbl = Secret } ]);
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], [ { t = I32; lbl = Secret } ]),
+                    [
+                      WI_Block
+                        ( BlockType ([], []),
                           [
-                            WI_GlobalGet 0;
-                              WI_Const 0;
-                              WI_BinOp Eq;
-                              WI_BrIf 1;
-                          ]);
-                          WI_GlobalSet 1;
-                      ] );
-                    WI_Const 1;
-                  ]) 
-            ];
-          export_name = Some "f4";
-        };
-      ];
-  }
+                            WI_Const 42;
+                            WI_Block
+                              ( BlockType ([], []),
+                                [
+                                  WI_GlobalGet 0;
+                                  WI_Const 0;
+                                  WI_BinOp Eq;
+                                  WI_BrIf 1;
+                                ] );
+                            WI_GlobalSet 1;
+                          ] );
+                      WI_Const 1;
+                    ] );
+              ];
+            export_name = Some "f4";
+          };
+        ];
+    }
 
 (*  ================= End of tests ================== *)
 (*  Run suite! *)
