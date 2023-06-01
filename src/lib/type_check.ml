@@ -324,8 +324,9 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
              this case is not reached because the variables in st are tainted by the pc, checked above *)
           if not (List.for_all (fun v -> pc <<= v.lbl) st) then
             raise (err_branch_stack_security_level pc st);
-          (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
-          let g1, g2 = split_at_index (i - 1) g' in
+          (* NOTE: split_at_index splits at an index that is _exclusive_:
+             g'[0 : i - 1], g'[i :] == split_at_index i g' *)
+          let g1, g2 = split_at_index i g' in
           match lift pc ((st @ st', pc) :: g1) with
           | [] -> raise (InternalError "stack-of-stacks ill-formed")
           | (st'', pc') :: g1' -> (((st'', pc') :: g1') @ g2, c))
@@ -354,8 +355,9 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               (* Check that pc ⊔ lcond ⊑ st_i for all i *)
               if not (List.for_all (fun v -> pc <> lcond <<= v.lbl) st) then
                 raise (err_branch_stack_security_level pc st);
-              (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
-              let g1, g2 = split_at_index (i - 1) g' in
+              (* NOTE: split_at_index splits at an index that is _exclusive_:
+                 g'[0 : i - 1], g'[i :] == split_at_index i g' *)
+              let g1, g2 = split_at_index i g' in
               match lift (lcond <> pc) ((st @ st', pc) :: g1) with
               | [] -> raise (InternalError "stack-of-stacks ill-formed")
               | (st'', pc') :: g1' -> (((st'', pc') :: g1') @ g2, c)))
