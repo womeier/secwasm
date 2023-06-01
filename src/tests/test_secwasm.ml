@@ -2072,6 +2072,69 @@ let _ =
         ];
     }
 
+(*
+  Illegal implicit flow that should be caught by lifting pc
+
+  (module
+    (global i32<Secret> i32.const 1)
+    (global (mut i32<Secret>) i32.const 0)
+    (func
+      block 
+        block 
+          global.get 0
+          i32.const 0
+          i32.eq
+          br_if 1
+        end
+        i32.const 1
+        global.set 1
+      end
+    )
+  )
+*)
+
+let _ =
+  test "illegal implicit flow caught by lift"
+    (neg_test (err_globalset2 Secret Secret Public))
+    {
+      memory = None;
+      globals =
+        [
+          {
+            gtype = { t = I32; lbl = Secret };
+            const = [ WI_Const 1 ];
+            mut = false;
+          };
+          {
+            gtype = { t = I32; lbl = Public };
+            const = [ WI_Const 0 ];
+            mut = true;
+          };
+        ];
+      function_imports = [];
+      functions =
+        [
+          {
+            ftype = FunType ([], Public, []);
+            locals = [];
+            body =
+              [
+                WI_Block
+                  ( BlockType ([], []),
+                    [
+                      WI_Block
+                        ( BlockType ([], []),
+                          [ WI_GlobalGet 0; WI_Const 0; WI_BinOp Eq; WI_BrIf 1 ]
+                        );
+                      WI_Const 1;
+                      WI_GlobalSet 1;
+                    ] );
+              ];
+            export_name = None;
+          };
+        ];
+    }
+
 (*  ================= End of tests ================== *)
 (*  Run suite! *)
 
