@@ -1,36 +1,42 @@
 open Ast
 open Sec
+open Types
 
 let rec log2 x = match x with 1 -> 0 | _ -> 1 + log2 ((x + 1) / 2)
+
+let instrs is =
+  List.map (fun i : wasm_instruction -> { it = i; at = Source.no_region }) is
 
 type context = {
   locals : labeled_value_type list (* params and locals *);
   memory : wasm_memory;
 }
 
-let push_bitmask0 (c : context) =
-  [
-    (* push 1111...111 *)
-    WI_Const (-1);
-    WI_Const 16;
-    WI_Const (log2 c.memory.size);
-    (* compute 16 - (log mem_size) *)
-    WI_BinOp Sub;
-    (* shift 11111 right with 32 - (log mem_size) *)
-    WI_BinOp Shr_u
-    (* = 01111111 where 0 is at index mem_size + 1 (from the right) *);
-  ]
+let push_bitmask0 (c : context) : wasm_instruction list =
+  instrs
+    [
+      (* push 1111...111 *)
+      WI_Const (-1);
+      WI_Const 16;
+      WI_Const (log2 c.memory.size);
+      (* compute 16 - (log mem_size) *)
+      WI_BinOp Sub;
+      (* shift 11111 right with 32 - (log mem_size) *)
+      WI_BinOp Shr_u
+      (* = 01111111 where 0 is at index mem_size + 1 (from the right) *);
+    ]
 
-let push_bitmask1 (c : context) =
-  [
-    (* Size of memory in bytes = mem_size * 64 * 2^10 = 2^(16 + log mem_size) *)
-    WI_Const 1;
-    WI_Const 16;
-    WI_Const (log2 c.memory.size);
-    WI_BinOp Add;
-    WI_BinOp Shl
-    (* = 100000 where 1 is at index log mem_size + 16 (from the right) *);
-  ]
+let push_bitmask1 (c : context) : wasm_instruction list =
+  instrs
+    [
+      (* Size of memory in bytes = mem_size * 64 * 2^10 = 2^(16 + log mem_size) *)
+      WI_Const 1;
+      WI_Const 16;
+      WI_Const (log2 c.memory.size);
+      WI_BinOp Add;
+      WI_BinOp Shl
+      (* = 100000 where 1 is at index log mem_size + 16 (from the right) *);
+    ]
 
 let translate_store (c : context) (encoded_lbl : int) :
     context * wasm_instruction =
@@ -44,46 +50,53 @@ let translate_store (c : context) (encoded_lbl : int) :
       c with
       locals =
         (* labels don't matter *)
-        c.locals @ [ { t = I32; lbl = Secret }; { t = I32; lbl = Secret } ];
+        c.locals @ [ (I32, Secret); (I32, Secret) ];
     }
   in
   ( new_ctxt,
-    WI_Block
-      ( BlockType
-          (* labels don't matter *)
-          ([ { t = I32; lbl = Secret }; { t = I32; lbl = Secret } ], []),
-        [
-          (* save value *)
-          WI_LocalSet idx_val;
-          (* save address *)
-          WI_LocalSet idx_addr;
-          (* === BEGIN STORE VALUE *)
-          WI_LocalGet idx_addr;
-        ]
-        @ push_bitmask0 c
-        @ [
-            (* Top of the stack: 01111111 where 0 is at index mem_size (from the right) *)
-            (* Next element    : addr *)
-            (* Force addres into lower part of memory *)
-            WI_BinOp And;
-            (* Get value *)
-            WI_LocalGet idx_val;
-            (* Store value - label doesn't matter *)
-            WI_Store Secret;
-            (* === BEGIN STORE LABEL *)
-            WI_LocalGet idx_addr;
-          ]
-        @ push_bitmask1 c
-        @ [
-            (* Top of the stack: 1000000 where 1 is at index mem_size (from the right) *)
-            (* Next element    : addr *)
-            (* Force address into upper part of memory *)
-            WI_BinOp Or;
-            (* Push label on stack *)
-            WI_Const encoded_lbl;
-            (* Store it - label doesn't matter *)
-            WI_Store Secret;
-          ] ) )
+    {
+      it =
+        WI_Block
+          ( BlockType
+              (* labels don't matter *)
+              ([ (I32, Secret); (I32, Secret) ], []),
+            instrs
+              [
+                (* save value *)
+                WI_LocalSet idx_val;
+                (* save address *)
+                WI_LocalSet idx_addr;
+                (* === BEGIN STORE VALUE *)
+                WI_LocalGet idx_addr;
+              ]
+            @ push_bitmask0 c
+            @ instrs
+                [
+                  (* Top of the stack: 01111111 where 0 is at index mem_size (from the right) *)
+                  (* Next element    : addr *)
+                  (* Force addres into lower part of memory *)
+                  WI_BinOp And;
+                  (* Get value *)
+                  WI_LocalGet idx_val;
+                  (* Store value - label doesn't matter *)
+                  WI_Store Secret;
+                  (* === BEGIN STORE LABEL *)
+                  WI_LocalGet idx_addr;
+                ]
+            @ push_bitmask1 c
+            @ instrs
+                [
+                  (* Top of the stack: 1000000 where 1 is at index mem_size (from the right) *)
+                  (* Next element    : addr *)
+                  (* Force address into upper part of memory *)
+                  WI_BinOp Or;
+                  (* Push label on stack *)
+                  WI_Const encoded_lbl;
+                  (* Store it - label doesn't matter *)
+                  WI_Store Secret;
+                ] );
+      at = Source.no_region;
+    } )
 
 let translate_load_public (c : context) : context * wasm_instruction =
   (* We extend the list of locals with two extra items,
@@ -91,66 +104,75 @@ let translate_load_public (c : context) : context * wasm_instruction =
          stored into *)
   let idx_addr = List.length c.locals in
   let new_ctxt =
-    {
-      c with
-      locals = (* labels don't matter *)
-               c.locals @ [ { t = I32; lbl = Secret } ];
-    }
+    { c with locals = (* labels don't matter *)
+                      c.locals @ [ (I32, Secret) ] }
   in
   ( new_ctxt,
-    WI_Block
-      (* labels don't matter *)
-      ( BlockType ([ { t = I32; lbl = Secret } ], [ { t = I32; lbl = Secret } ]),
-        [
-          (* save address *)
-          WI_LocalSet idx_addr;
-          (* === BEGIN CHECK LABEL*)
-          WI_Block
-            ( BlockType ([], []),
-              (* push address and 100000 *)
-              (WI_LocalGet idx_addr :: push_bitmask1 c)
-              @ [
-                  (* Top of the stack: 1000000 where 1 is at index mem_size (from the right) *)
+    {
+      it =
+        WI_Block
+          (* labels don't matter *)
+          ( BlockType ([ (I32, Secret) ], [ (I32, Secret) ]),
+            instrs
+              [
+                (* save address *)
+                WI_LocalSet idx_addr;
+                (* === BEGIN CHECK LABEL*)
+                WI_Block
+                  ( BlockType ([], []),
+                    (* push address and 100000 *)
+                    (instrs [ WI_LocalGet idx_addr ] @ push_bitmask1 c)
+                    @ instrs
+                        [
+                          (* Top of the stack: 1000000 where 1 is at index mem_size (from the right) *)
+                          (* Next element    : addr *)
+                          (* Force address into upper part of memory *)
+                          WI_BinOp Or;
+                          (* Load labels from memory (4 bytes, i.e. 4 labels) - label doesn't matter*)
+                          WI_Load Secret;
+                          (* Assert that all labels are 0 *)
+                          WI_Const 0;
+                          WI_BinOp Eq;
+                          (* branch conditionally to the end of the block*)
+                          WI_BrIf 0;
+                          (* attempt to load secret into public value, trap! *)
+                          WI_Unreachable;
+                        ] );
+              ]
+            (* === BEGIN LOAD VALUE *)
+            @ (instrs [ WI_LocalGet idx_addr ] @ push_bitmask0 c)
+            @ instrs
+                [
+                  (* Top of the stack: 01111111 where 0 is at index mem_size (from the right) *)
                   (* Next element    : addr *)
-                  (* Force address into upper part of memory *)
-                  WI_BinOp Or;
-                  (* Load labels from memory (4 bytes, i.e. 4 labels) - label doesn't matter*)
+                  (* Force addres into lower part of memory *)
+                  WI_BinOp And;
+                  (* load value - label doesn't matter *)
                   WI_Load Secret;
-                  (* Assert that all labels are 0 *)
-                  WI_Const 0;
-                  WI_BinOp Eq;
-                  (* branch conditionally to the end of the block*)
-                  WI_BrIf 0;
-                  (* attempt to load secret into public value, trap! *)
-                  WI_Unreachable;
                 ] );
-        ]
-        (* === BEGIN LOAD VALUE *)
-        @ (WI_LocalGet idx_addr :: push_bitmask0 c)
-        @ [
-            (* Top of the stack: 01111111 where 0 is at index mem_size (from the right) *)
-            (* Next element    : addr *)
-            (* Force addres into lower part of memory *)
-            WI_BinOp And;
-            (* load value - label doesn't matter *)
-            WI_Load Secret;
-          ] ) )
+      at = Source.no_region;
+    } )
 
 let translate_load_secret (c : context) : context * wasm_instruction =
   ( c,
-    WI_Block
-      (* labels don't matter *)
-      ( BlockType ([ { t = I32; lbl = Secret } ], [ { t = I32; lbl = Secret } ]),
-        (* addr is on the stack, force it down in lower half *)
-        push_bitmask0 c
-        @ [
-            (* Top of the stack: 01111111 where 0 is at index mem_size (from the right) *)
-            (* Next element    : addr *)
-            (* Force addres into lower part of memory *)
-            WI_BinOp And;
-            (* Load labels from memory (4 bytes, i.e. 4 labels) - label doesn't matter*)
-            WI_Load Secret;
-          ] ) )
+    {
+      it =
+        WI_Block
+          (* labels don't matter *)
+          ( BlockType ([ (I32, Secret) ], [ (I32, Secret) ]),
+            (* addr is on the stack, force it down in lower half *)
+            push_bitmask0 c
+            @ instrs
+                [
+                  (* Top of the stack: 01111111 where 0 is at index mem_size (from the right) *)
+                  (* Next element    : addr *)
+                  (* Force addres into lower part of memory *)
+                  WI_BinOp And;
+                  (* Load labels from memory (4 bytes, i.e. 4 labels) - label doesn't matter*)
+                  WI_Load Secret;
+                ] );
+      at = Source.no_region;
+    } )
 
 let rec transform_seq (c : context) (seq : wasm_instruction list) :
     context * wasm_instruction list =
@@ -166,7 +188,7 @@ let rec transform_seq (c : context) (seq : wasm_instruction list) :
 
 and transform_instr (c : context) (i : wasm_instruction) :
     context * wasm_instruction =
-  match i with
+  match i.it with
   | WI_Load l -> (
       match l with
       | Public -> translate_load_public c
@@ -174,10 +196,10 @@ and transform_instr (c : context) (i : wasm_instruction) :
   | WI_Store l -> translate_store c (SimpleLattice.encode l)
   | WI_Block (bt, instr) ->
       let c', instr' = transform_seq c instr in
-      (c', WI_Block (bt, instr'))
+      (c', { i with it = WI_Block (bt, instr') })
   | WI_Loop (bt, instr) ->
       let c', instr' = transform_seq c instr in
-      (c', WI_Loop (bt, instr'))
+      (c', { i with it = WI_Loop (bt, instr') })
   | _ -> (c, i)
 
 let transform_func (m : wasm_memory) (f : wasm_func) : wasm_func =

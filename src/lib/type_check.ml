@@ -1,9 +1,10 @@
 open Ast
 open Sec
+open Types
 
 type context = {
   memory : wasm_memory option; (* number of memories *)
-  func_types : fun_type list;
+  func_types : func_type list;
   globals : wasm_global list;
   locals : labeled_value_type list; (* params and locals *)
   labels : labeled_value_type list list;
@@ -48,8 +49,8 @@ let rec print_g (g : stack_of_stacks_type) =
 and print_st (st : stack_type) =
   match st with
   | [] -> "[]"
-  | { t; lbl } :: st' ->
-      Printf.sprintf "{%s, %s} :: %s" (pp_type t) (str_l lbl) (print_st st')
+  | (_, lbl) :: st' ->
+      Printf.sprintf "{i32, %s} :: %s" (str_l lbl) (print_st st')
 
 let fail_g g = failwith (print_g g)
 let fail_st st = failwith (print_st st)
@@ -68,8 +69,8 @@ exception PrivacyViolation of string
 
 let t_err0 msg = raise (TypingError msg)
 
-let t_err2 msg (t1 : value_type) (t2 : value_type) =
-  let error_msg = Printf.sprintf msg (pp_type t1) (pp_type t2) in
+let t_err2 msg (_ : value_type) (_ : value_type) =
+  let error_msg = Printf.sprintf msg "i32" "i32" in
   raise (TypingError error_msg)
 
 let t_err2i msg (i1 : int) (i2 : int) =
@@ -200,15 +201,13 @@ let lookup_label (c : context) (idx : int) =
   else failwith ("expected label of index " ^ Int.to_string idx)
 
 let same_lengths l1 l2 = List.compare_lengths l1 l2 == 0
-let leq_ty { t = t1; lbl = l1 } { t = t2; lbl = l2 } = t1 == t2 && l1 <<= l2
+let leq_ty (t1, l1) (t2, l2) = t1 == t2 && l1 <<= l2
 
 let leq_stack (s1 : labeled_value_type list) (s2 : labeled_value_type list) =
   same_lengths s1 s2 && List.for_all2 leq_ty s1 s2
 
 let lift_st lbl_lift_to st =
-  let lift_st_helper ({ lbl; _ } as v) acc =
-    { v with lbl = lbl_lift_to <> lbl } :: acc
-  in
+  let lift_st_helper (t, lbl) acc = (t, lbl_lift_to <> lbl) :: acc in
   List.fold_right lift_st_helper st []
 
 let lift_g lbl_lift_to g =
@@ -224,7 +223,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
     (i : wasm_instruction) : stack_of_stacks_type * context =
   match g with
   | (st, pc) :: g' -> (
-      match i with
+      match i.it with
       | WI_Unreachable ->
           (* Note: We put no restrictions on the program context,
              i.e. our approach is termination insensitive! *)
@@ -232,14 +231,14 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
       | WI_Nop -> (g, c)
       | WI_Drop -> (
           match st with _ :: st' -> ((st', pc) :: g', c) | _ -> raise err_drop)
-      | WI_Const _ -> (({ t = I32; lbl = pc } :: st, pc) :: g', c)
+      | WI_Const _ -> (((I32, pc) :: st, pc) :: g', c)
       | WI_BinOp _ -> (
           match st with
-          | v1 :: v2 :: st' ->
-              assert (v1.t == v2.t);
+          | (t1, l1) :: (t2, l2) :: st' ->
+              assert (t1 == t2);
               (* Label should be lbl1 ⊔ lbl2 ⊔ pc *)
-              let lbl3 = v1.lbl <> v2.lbl <> pc in
-              (({ t = v1.t; lbl = lbl3 } :: st', pc) :: g', c)
+              let lbl3 = l1 <> l2 <> pc in
+              (((t1, lbl3) :: st', pc) :: g', c)
           | _ -> raise err_binop)
       | WI_Call idx -> (
           match lookup_func_type c idx with
@@ -255,28 +254,24 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               if not (leq_stack tau1 ft_in) then raise (err_call3 ft_in tau1);
               ((ft_out @ st', pc) :: g', c))
       | WI_LocalGet idx ->
-          let { t; lbl } = lookup_local c idx in
-          (({ t; lbl = pc <> lbl } :: st, pc) :: g', c)
+          let t, lbl = lookup_local c idx in
+          (((t, pc <> lbl) :: st, pc) :: g', c)
       | WI_LocalSet idx -> (
           match st with
-          | { t = _; lbl = l } :: st' ->
-              let { t = _; lbl = l' } = lookup_local c idx in
+          | (_, l) :: st' ->
+              let _, l' = lookup_local c idx in
               (* Types are guaranteed to be I32, Check that pc ⊔ l ⊑ l' *)
               if not (l <> pc <<= l') then raise (err_localset2 pc l l');
               ((st', pc) :: g', c)
           | _ -> raise err_localset3)
       | WI_GlobalGet idx ->
-          let { gtype = { t = ty; lbl = lbl' }; const = _; mut = _ } =
-            lookup_global c idx
-          in
+          let { gtype = (ty, lbl'), _; const = _ } = lookup_global c idx in
           let lbl = pc <> lbl' in
-          (({ t = ty; lbl } :: st, pc) :: g', c)
+          (((ty, lbl) :: st, pc) :: g', c)
       | WI_GlobalSet idx -> (
           match st with
-          | { t = _; lbl = l } :: st' ->
-              let { gtype = { t = _; lbl = l' }; const = _; mut } =
-                lookup_global c idx
-              in
+          | (_, l) :: st' ->
+              let { gtype = (_, l'), mut; const = _ } = lookup_global c idx in
               (* Type are guaranteed to be I32 thus equal, Check that var is mutable and pc ⊔ l ⊑ l' *)
               if not mut then raise err_globalset_imut;
               if not (l <> pc <<= l') then raise (err_globalset2 pc l l');
@@ -287,17 +282,17 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           | None -> raise err_load_nomemory
           | Some _ -> (
               match st with
-              | { t = _; lbl = la } :: st ->
+              | (_, la) :: st ->
                   (* l = l_a ⊔ l_m ⊔ pc *)
                   let lbl = la <> lm <> pc in
-                  (({ t = I32; lbl } :: st, pc) :: g', c)
+                  (((I32, lbl) :: st, pc) :: g', c)
               | _ -> raise err_load_addrexists))
       | WI_Store lm -> (
           match c.memory with
           | None -> raise err_store_nomemory
           | Some _ -> (
               match st with
-              | { t = _; lbl = lv } :: { t = _; lbl = la } :: st' ->
+              | (_, lv) :: (_, la) :: st' ->
                   (* Addr and val are known to be I32, check that pc ⊔ l_a ⊔ l_v ⊑ l_m *)
                   if not (pc <> la <> lv <<= lm) then
                     raise (err_store2 pc la lv lm);
@@ -322,7 +317,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           if not (leq_stack st bt_out) then raise (err_branch_prefix bt_out st);
           (* Check that pc ⊑ st_i for all i,
              this case is not reached because the variables in st are tainted by the pc, checked above *)
-          if not (List.for_all (fun v -> pc <<= v.lbl) st) then
+          if not (List.for_all (fun (_, lbl) -> pc <<= lbl) st) then
             raise (err_branch_stack_security_level pc st);
           (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
           let g1, g2 = split_at_index (i - 1) g' in
@@ -333,7 +328,7 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
           match st with
           | [] -> raise err_branch_cond_nocond
           (* overwrite st with tail of st (first element split off), so the naming is the same as in WI_Br *)
-          | { t = _; lbl = lcond } :: st -> (
+          | (_, lcond) :: st -> (
               (* Check that
                  1. we're in a block
                  2. the branching index is valid *)
@@ -352,8 +347,8 @@ let rec check_instr ((g, c) : stack_of_stacks_type * context)
               if not (leq_stack st bt_out) then
                 raise (err_branch_prefix bt_out st);
               (* Check that pc ⊔ lcond ⊑ st_i for all i *)
-              if not (List.for_all (fun v -> pc <> lcond <<= v.lbl) st) then
-                raise (err_branch_stack_security_level pc st);
+              if not (List.for_all (fun (_, lbl) -> pc <> lcond <<= lbl) st)
+              then raise (err_branch_stack_security_level pc st);
               (* g1 = g'[0 : i - 1], g2 = g'[i :] *)
               let g1, g2 = split_at_index (i - 1) g' in
               match lift (lcond <> pc) ((st @ st', pc) :: g1) with

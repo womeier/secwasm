@@ -1,3 +1,8 @@
+(ocamlyacc
+ (modules parser))
+
+(ocamllex lexer)
+
 (library
  (name secwasm)
  (libraries)

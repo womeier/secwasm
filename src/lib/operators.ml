@@ -1,0 +1,60 @@
+open Source
+open Ast
+
+let i32_const n = WI_Const n.it
+
+(* (Values.I32 n.it @@ n.at) *)
+let i64_const _ = failwith "NotImplementedlet i64_const "
+let f32_const _ = failwith "NotImplementedlet f32_const "
+let f64_const _ = failwith "NotImplementedlet f64_const "
+let unreachable = WI_Unreachable
+let nop = WI_Nop
+let drop = WI_Drop
+let block ts es = WI_Block (ts, es)
+let loop ts es = WI_Loop (ts, es)
+let br x = WI_Br x
+let br_if x = WI_BrIf x
+let br_table _ _ = failwith "NotImplementedlet br_table "
+let if_ _ _ _ = failwith "NotImplementedlet if_ "
+let call x = WI_Call x
+let call_indirect _ = failwith "NotImplementedlet call_indirect "
+let local_get x = WI_LocalGet x
+let local_set x = WI_LocalSet x
+let local_tee _ = failwith "NotImplementedlet local_tee "
+let global_get x = WI_GlobalGet x
+let global_set x = WI_GlobalSet x
+let i32_load = WI_Load Public
+let i64_load _ _ = failwith "NotIMplementedlet i64_load "
+let f32_load _ _ = failwith "NotIMplementedlet f32_load "
+let f64_load _ _ = failwith "NotIMplementedlet f64_load "
+let i32_load8_s _ _ = failwith "NotIMplementedlet i32_load8_s "
+let i32_load8_u _ _ = failwith "NotIMplementedlet i32_load8_u "
+let i32_load16_s _ _ = failwith "NotIMplementedlet i32_load16_s "
+let i32_load16_u _ _ = failwith "NotIMplementedlet i32_load16_u "
+let i64_load8_s _ _ = failwith "NotIMplementedlet i64_load8_s "
+let i64_load8_u _ _ = failwith "NotIMplementedlet i64_load8_u "
+let i64_load16_s _ _ = failwith "NotIMplementedlet i64_load16_s "
+let i64_load16_u _ _ = failwith "NotIMplementedlet i64_load16_u "
+let i64_load32_s _ _ = failwith "NotIMplementedlet i64_load32_s "
+let i64_load32_u _ _ = failwith "NotIMplementedlet i64_load32_u "
+let i32_store = WI_Store Public
+let i64_store _ _ = failwith "NotIMplementedlet i64_store "
+let f32_store _ _ = failwith "NotIMplementedlet f32_store "
+let f64_store _ _ = failwith "NotIMplementedlet f64_store "
+let i32_store8 _ _ = failwith "NotIMplementedlet i32_store8 "
+let i32_store16 _ _ = failwith "NotIMplementedlet i32_store16 "
+let i64_store8 _ _ = failwith "NotIMplementedlet i64_store8 "
+let i64_store16 _ _ = failwith "NotIMplementedlet i64_store16 "
+let i64_store32 _ _ = failwith "NotIMplementedlet i64_store32 "
+let i32_add = WI_BinOp Add (* Binary (I32 I32Op.Add) *)
+let i32_sub = WI_BinOp Sub
+let i32_mul = WI_BinOp Mul
+let i32_and = WI_BinOp And
+let i32_or = WI_BinOp Or
+let i32_shl = WI_BinOp Shl
+let i32_shr_u = WI_BinOp Shr_u
+let i32_eq = WI_BinOp Eq
+let i32_lt_s = WI_BinOp Lt_s
+let i32_lt_u = WI_BinOp Lt_u
+let i32_le_s = WI_BinOp Le_s
+let i32_ge_s = WI_BinOp Ge_s
