@@ -2077,7 +2077,7 @@ let _ =
 
   (module
     (global i32<Secret> i32.const 1)
-    (global (mut i32<Secret>) i32.const 0)
+    (global (mut i32<Public>) i32.const 0)
     (func
       block 
         block 
@@ -2140,7 +2140,7 @@ let _ =
 
   (module
     (global i32<Secret> i32.const 1)
-    (global (mut i32<Secret>) i32.const 0)
+    (global (mut i32<Public>) i32.const 0)
     (func
       block 
         block 
