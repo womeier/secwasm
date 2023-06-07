@@ -4,6 +4,45 @@ help:
 	dune build
 	dune exec _build/default/bin/main.exe -- -help
 
+demo-1:
+	dune build
+	dune exec _build/default/bin/main.exe -- -example demo1 -typecheck
+
+demo-2:
+	dune build
+	dune exec _build/default/bin/main.exe -- -example demo2 -typecheck
+
+demo-3:
+	dune build
+	dune exec _build/default/bin/main.exe -- -example demo3 -typecheck
+
+demo-3-run:
+	dune build
+	rm -rf _benchmark/demo3
+	mkdir -p _benchmark/demo3
+	dune exec _build/default/bin/main.exe -- -example demo3 -typecheck
+	dune exec _build/default/bin/main.exe -- -example demo3 -pp -out _benchmark/demo3/orig.wat
+	dune exec _build/default/bin/main.exe -- -example demo3 -dynchecks -out _benchmark/demo3/dynchecks.wat
+
+	cp ../testing/benchmarking/demo3-run.js _benchmark/demo3/orig.js
+	sed -i 's/{{file}}/\"\/orig.wasm\"/g' _benchmark/demo3/orig.js
+
+	cp ../testing/benchmarking/demo3-run.js _benchmark/demo3/dynchecks.js
+	sed -i 's/{{file}}/\"\/dynchecks.wasm\"/g' _benchmark/demo3/dynchecks.js
+
+	cd _benchmark/demo3 &&	wat2wasm dynchecks.wat
+	cd _benchmark/demo3 &&	wat2wasm orig.wat
+
+	@echo "***********************************************************"
+	@echo "RUNNING INSECURE (STRIPPED LABELS)"
+	cd _benchmark/demo3 &&	node orig.js
+
+	@echo
+	@echo "***********************************************************"
+	@echo "RUNNING WITH INSTRUMENTED DYNAMIC CHECKS"
+	cd _benchmark/demo3 &&	node dynchecks.js
+
+
 run:
 	dune build
 	dune exec _build/default/bin/main.exe -- -example 1 -typecheck

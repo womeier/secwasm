@@ -4,35 +4,143 @@ open Secwasm.Dynamic_check
 open Secwasm.Sec
 
 let example1_module : wasm_module =
+  (*
+  (global i32<Secret> (i32.const 41))
+  (global (mut i32<Public>) (i32.const 1))
+
+  (func (export "f") Public
+    i32.const 1
+    global.get 0
+    i32.add
+    global.set 1)
+  *)
   {
     memory = None;
-    globals = [];
+    globals =
+      [
+        {
+          gtype = { t = I32; lbl = Secret };
+          const = [ WI_Const 41 ];
+          mut = false;
+        };
+        {
+          gtype = { t = I32; lbl = Public };
+          const = [ WI_Const 1 ];
+          mut = true;
+        };
+      ];
     function_imports = [];
     functions =
       [
         {
-          ftype =
-            FunType
-              ( [ { t = I32; lbl = Public }; { t = I32; lbl = Public } ],
-                Public,
-                [] );
-          locals = [ { t = I32; lbl = Public }; { t = I32; lbl = Public } ];
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body = [ WI_Const 1; WI_GlobalGet 0; WI_BinOp Add; WI_GlobalSet 1 ];
+          export_name = Some "f1";
+        };
+      ];
+  }
+
+let example2_module : wasm_module =
+  (*
+  (global i32<Secret> (i32.const 0))
+  (global (mut i32<Public>) (i32.const 0))
+    (func (export "f2") Public
+      block
+        block
+          global.get 0
+          br_if 0
+          br 1
+        end
+        i32.const 1
+        global.set 1
+      end)
+  *)
+  {
+    memory = None;
+    globals =
+      [
+        {
+          gtype = { t = I32; lbl = Secret };
+          const = [ WI_Const 0 ];
+          mut = false;
+        };
+        {
+          gtype = { t = I32; lbl = Public };
+          const = [ WI_Const 0 ];
+          mut = true;
+        };
+      ];
+    function_imports = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
           body =
             [
-              WI_Nop;
-              WI_LocalGet 0;
-              WI_LocalGet 1;
-              WI_BinOp Add;
-              WI_Const 0;
-              WI_BinOp Eq;
-              WI_LocalSet 0
-              (* WI_If
-                     ( FunType ([], Public, []),
-                       [ WI_Nop; WI_Const 2; WI_LocalSet 0 ],
-                       [ WI_Const 42; WI_LocalSet 0 ] );
-                 ]; *);
+              WI_Block
+                ( BlockType ([], []),
+                  [
+                    WI_Block
+                      ( BlockType ([], []),
+                        [ WI_GlobalGet 0; WI_BrIf 0; WI_Br 1 ] );
+                    WI_Const 1;
+                    WI_GlobalSet 1;
+                  ] );
             ];
-          export_name = Some "hello";
+          export_name = Some "f2";
+        };
+      ];
+  }
+
+let example3_module : wasm_module =
+  (*
+  (memory 20) ;; 20 * 64KB
+  (global i32<Secret> (i32.const 42))
+  (global (mut i32<Public>) (i32.const 0))
+
+  (func (export "f3") Public
+    i32.const 0 ;; address
+    global.get 0
+    i32.store Secret
+    i32.const 0 ;; address
+    i32.load Public
+    global.set 1)
+  *)
+  {
+    memory = Some { size = 20 };
+    globals =
+      [
+        {
+          gtype = { t = I32; lbl = Secret };
+          const = [ WI_Const 42 ];
+          mut = false;
+        };
+        {
+          gtype = { t = I32; lbl = Public };
+          const = [ WI_Const 0 ];
+          mut = true;
+        };
+      ];
+    function_imports = [];
+    functions =
+      [
+        {
+          ftype = FunType ([], Public, []);
+          locals = [];
+          body =
+            [
+              WI_Const 0;
+              (* address *)
+              WI_GlobalGet 0;
+              WI_Store Secret;
+              WI_Const 0;
+              (* address *)
+              WI_Load Public;
+              WI_GlobalSet 1;
+            ];
+          export_name = Some "f3";
         };
       ];
   }
@@ -399,7 +507,9 @@ let wmodule = ref None
 let set_module s =
   Printf.fprintf stdout "using test module: %s\n" s;
   match s with
-  | "1" -> wmodule := Some example1_module
+  | "demo1" -> wmodule := Some example1_module
+  | "demo2" -> wmodule := Some example2_module
+  | "demo3" -> wmodule := Some example3_module
   | "2" -> wmodule := Some store_public_load_as_public (* Ok! *)
   | "3" -> wmodule := Some store_public_load_as_secret (* Ok! *)
   | "4" -> wmodule := Some store_secret_load_as_secret (* Ok! *)
