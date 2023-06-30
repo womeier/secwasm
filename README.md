@@ -5,6 +5,10 @@
 
 ## Setup
 
+### Nix setup
+- Running `nix-shell` will enter an environment with the required dependencies.
+- Otherwise, the following manual setup is possible
+
 ### Dependencies
 - Ocaml version 4, `dune` version 3.7
 - Webassembly binary toolkit: `wabt`, provides `wat2wasm` and `wasm2wat` among others
